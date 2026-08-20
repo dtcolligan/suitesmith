@@ -1,125 +1,121 @@
-# SPEC — covgap
+# SPEC — v2 (design re-based 20 Aug, Dom's frame)
 
-> Fill this by hand (train session, Fri 21 Aug). Questions marked **Q**
-> are the load-bearing design decisions — they're yours. Notes in
-> *italics* are constraints already fixed by the project definition.
+> v1's weak-reward/planted-gap design is RETIRED (see §9). This project
+> trains a capability. Fill the **Q** items by hand (train session, Fri
+> 21 Aug); *italics* are fixed constraints.
 
-## 0. Objective (fixed 20 Aug — do not re-litigate here)
+## 0. Objective (unchanged)
 
-S2 committed: designed + built RL environment with verifiable grader,
-trained against, **done before 14 Sep**. S1 (one training step printing
-a reward) by 31 Aug, cleared on GPU day Mon 24 with existing-env
-fallback.
+S2 committed: **designed and built an RL environment with a verifiable
+grader, and trained models against it — done before 14 Sep.** S1 (one
+training step printing a reward) by 31 Aug — GPU day Mon 24, existing-env
+fallback held. S3 = *unplanned* exploitation caught by instrumentation —
+designed-for via logging, never promised, never staged.
 
-**Definitions sharpened 20 Aug (Dom's catch):**
-- **The planted-seam drift experiment is part of S2** — the quirk gap is
-  a controlled, designed study of training under under-enforcement. Its
-  "fix" (enforce the quirk, p=1 control arm) is known in advance; it is
-  a result about training, never presented as a discovered flaw.
-- **S3 = the UNPLANNED catch only**: the policy exploits something we
-  did not intend (base tests, oracle input sampler, reward parsing,
-  sandbox, template bug), we spot it via the instrumentation, diagnose,
-  fix, show before/after. Cannot be staged; therefore designed-for,
-  never promised, and never conflated with the planted seam.
+## 1. The capability
 
-## 1. Task family
+**Train a small model to write test suites.** Given a specification (and
+possibly an implementation), the model writes tests; good tests are ones
+that **pass the correct implementation and kill mutants** (subtly broken
+variants). The trained capability is the sub-specialty itself: writing
+verifiers that see more.
 
-*Constraints: Python; single-turn; procedurally generated; difficulty at
-a 0.5–3B model's frontier (mixed pass rates required — all-pass and
-all-fail groups both give zero GRPO advantage).*
+## 2. Task instance
 
-**Q1. ✅ DECIDED (20 Aug): composition of (i) + (iii).** One instance =
-implement a Python function from signature + docstring; the task body is
-a **data-manipulation template** (filter/aggregate/transform records
-with sampled parameters), with a **spec-quirk** sampled and injected
-into the docstring (an unusual rule the base task wouldn't imply). Base
-task easy enough for a 0.5–3B model; failure concentrates at the quirk
-by design. Remaining sub-decisions (train, Fri): the template set (~how
-many, which shapes), the quirk library (~how many, categorised), and
-whether some instances carry no quirk (controls).
+One instance = a generated function: spec (signature + docstring +
+examples) + **reference implementation** (correct by construction) +
+**N mutants** (broken variants from a mutation engine). The model
+outputs a test suite (pytest-style or assert-based — Q).
 
-**Q2. ✅ DECIDED (20 Aug, Dom's design): specification quality is the
-difficulty separator.** The model sees signature + docstring (+ tiered
-examples); the weak suite is never shown; the strong oracle never shown.
-Spec tiers (draft — finalise on the train): **A** quirk stated plainly +
-a shown example exercising the quirk · **B** quirk stated plainly,
-examples exercise base behaviour only · **C** quirk stated
-tersely/obliquely, base-only examples. Two hard rules: (1) **the quirk
-is always derivable from the spec** — tiers vary how cheaply, never
-whether (a quirk-unstated variant exists only as a labelled control,
-off-ladder); (2) **step-0 per-tier compliance baselines are mandatory**
-— drift = decline from baseline within tier, separating
-never-understood from learned-to-drop. S3 interaction hypothesis: under
-an under-enforcing reward, quirk-compliance decays faster on
-weaker-specified tiers ("strength of telling" parameterised while the
-enforcement gap stays constant). Full-suite-visible contrast arm:
-parked, out-of-week upside.
+**Q1.** Black-box or white-box: does the model see only the spec, or
+spec + reference implementation? (Black-box trains spec-reading and
+prevents asserting on implementation internals; white-box is the
+realistic TDD-reviewer setting and probably easier. Could be a knob —
+pick ONE for week one.)
 
-**Q3.** Difficulty ladder: what makes an instance easy vs hard, and how
-will difficulty be calibrated? (Protocol: vf-eval a small model on N
-instances; target a mixed per-instance pass distribution, not ~0% or
-~100%.)
+**Q2.** Output format: bare `assert` lines? pytest functions? How is it
+parsed and executed safely? Malformed output → reward 0 or small
+penalty?
 
-## 2. Generator
+## 3. Generator
 
-**Q4.** How is an instance generated — templates with sampled
-parameters? Compositions of primitives? Where does the **reference
-solution** come from (it must be correct by construction)?
+**Q3.** Function templates: reuse v1's data-manipulation template
+library (filter/aggregate/transform with sampled parameters) — decide
+the initial set (~how many templates, what parameter ranges).
 
-**Q5.** Seeding and splits: how do train/eval instances stay disjoint?
-(Contamination-by-construction is the cheap win of procedural
-generation — say how.)
+**Q4. The mutation engine — the design centre.** Mutation taxonomy:
+operator swaps (`<` vs `<=`), boundary shifts (off-by-one), negated
+conditions, dropped clauses (e.g., a tie-break rule silently removed),
+wrong default, order swap. How many mutants per instance; how is
+subtlety tiered (difficulty knob: crude mutants easy to kill, subtle
+mutants need pointed tests)?
 
-## 3. Graders
+**Q5.** Seeding + disjoint train/eval splits (contamination-free by
+construction — state the mechanism).
 
-*Constraint: deterministic, execution-based, no LLM judge anywhere.*
+## 4. Grader and reward
 
-**Q6.** **Weak suite (the reward):** how many tests per instance, chosen
-how? What coverage is deliberately left out — i.e., write the
-**soft-spot map**: the enumerated ways a solution could pass the weak
-suite while being wrong (edge cases untested, only happy-path inputs,
-narrow value ranges, ...). This map is what makes S3 catchable.
+*Deterministic, execution-based, sandboxed (subprocess, timeout, no
+network), no LLM judge.*
 
-**Q7.** **Strong oracle (the truth):** differential testing against the
-reference solution on randomly sampled inputs is available for free —
-how many samples, what input distribution, what counts as equivalent
-(exact? tolerance? exceptions must match?)?
+- Run the suite against the **reference: must pass** (a suite that
+  fails the correct code is worth 0 — correctness of the tests comes
+  first).
+- Run against each mutant: a mutant is **killed** if ≥1 test fails.
+- **Q6.** Reward shape: `0 if reference fails else killed/N`? Bonus
+  structure? Penalty for degenerate suites? Justify against GRPO
+  signal needs (dense enough gradient for a 0.5–3B).
 
-**Q8.** Sandboxing: generated code gets executed — subprocess, timeout,
-resource limits, no network. What are the limits?
+**Q7. Degenerate-suite guards** (the natural gaming surface — this is
+where unplanned S3 material lives): empty suites, tests with no
+assertions, enormous suites, flaky tests (nondeterminism), asserting on
+internals (white-box only). Which guards are hard rules vs logged-only?
+*Deliberately do NOT over-guard: log first, patch when exploited — that
+is the honest break-and-fix loop.*
 
-## 4. Reward
+## 5. Calibration
 
-**Q9.** Reward definition from the weak suite: binary all-pass, or
-fraction of tests passed? (Fraction gives denser signal for small
-models; binary is cleaner for the S3 story. Justify the choice.)
+*Pre-training gate: per-instance rewards must be MIXED (the 7 Aug
+variance rule: all-zero or all-max groups give GRPO no signal).*
+**Q8.** Calibration protocol: vf-eval the base model on ~50 instances;
+tune template complexity + mutant subtlety until the reward
+distribution has spread.
 
-**Q10.** Anything else in the reward (format compliance, length,
-parse-failure penalty)? *Keep minimal — every extra term is a new
-surface to game, which is either noise or the experiment, decide which.*
+## 6. Training
 
-## 5. Training
+*0.5–3B open-weight + LoRA; GRPO on the verifiers stack; ~$50 gate
+budget.* **Q9.** Model pick, rollouts per step, group size, first-run
+step count.
 
-*Constraints: 0.5–3B open-weight + LoRA; GRPO on the verifiers stack;
-budget ceiling ~$50 for the gate phase; rented GPU.*
+## 7. Instrumentation
 
-**Q11.** Model pick and why. Rollouts per step, group size, steps for
-the first real run.
+Per step: mean reward; reference-pass rate; kill rate **by mutation
+class** (which flaw types the model learns to catch — the interesting
+curve); suite-size and assertion-count distributions (degeneracy
+watch); checkpoint transcripts read by hand (the S3 net).
 
-## 6. Metrics & instrumentation (this is where S3 lives)
+## 8. Milestones (unchanged)
 
-**Q12.** Per training step, log at minimum: weak-suite reward AND
-strong-oracle pass rate on the same rollouts. **The divergence curve
-(weak up, strong flat-or-down) is the finding.** What else: per-instance
-pass patterns? sampled transcripts at checkpoints for reading what the
-policy actually does?
+Fri spec → Sat–Sun build + calibration → **Mon 24 GPU/S1** → Tue 25
+protected → 26–31 runs + report v1 → ≤7 Sep repo public, **S2
+declared** → 14 Sep SPAR starts.
 
-## 7. Milestones (fixed)
+## 9. Retired: v1's planted-gap design (for the record)
 
-Fri spec → Sat–Sun build + calibration → Mon GPU/S1 → Tue off → 26–31
-runs + report v1 → ≤7 Sep repo public + S2 declared → 14 Sep SPAR.
+v1 rewarded via a deliberately weak suite and measured drift against a
+hidden oracle. Retired 20 Aug: Dom's call — he wants to train a
+capability, not stage a failure ("I would rather make mistakes on the
+way, giving me lessons, rather than force them"). What it got right is
+kept: templates, spec-quality tiers (available as a difficulty knob),
+differential-vs-reference machinery (now inside mutation generation),
+the S2/S3 boundary. The drift experiment survives only as a possible
+later arm — a good grader can always be weakened deliberately;
+week one never does. Also shelved by name: **structured extraction**
+(option 5) as a candidate second environment.
 
-## 8. Out of scope (fixed)
+## 10. Out of scope (unchanged)
 
-Hub upload, verifiers-port adventures, paper, multi-turn, big models,
-GAB, insolvency.
+Hub upload · verifiers-port · paper · multi-turn · big models · GAB ·
+insolvency. **Rename pending: "covgap" named the old design — Dom picks
+the new name or keeps it (killing mutants IS coverage, so it half
+survives).**
