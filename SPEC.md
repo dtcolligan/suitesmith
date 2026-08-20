@@ -27,15 +27,28 @@ examples) + **reference implementation** (correct by construction) +
 **N mutants** (broken variants from a mutation engine). The model
 outputs a test suite (pytest-style or assert-based — Q).
 
-**Q1.** Black-box or white-box: does the model see only the spec, or
-spec + reference implementation? (Black-box trains spec-reading and
-prevents asserting on implementation internals; white-box is the
-realistic TDD-reviewer setting and probably easier. Could be a knob —
-pick ONE for week one.)
+**Q1. ✅ DECIDED (20 Aug, Dom's design): visibility is a per-instance
+DIFFICULTY KNOB, not a bet.** The dataset mixes white-box instances
+(spec + reference shown — isolates adversarial input selection; easier)
+and black-box instances (spec only — adds spec-to-oracle derivation;
+harder). Mix ratio set empirically at calibration; **static in week
+one** (curriculum ramp shelved by name). Safety property: GRPO
+advantages are within-instance, so a too-hard black-box group is
+wasted compute, never poison — the white-box fraction carries signal
+regardless. Riders: two fixed prompt templates, never blended; **all
+metrics split by visibility mode** (reward, kill rate, and
+reference-fail rate per mode — black-box failures often die at the
+reference gate via wrong expected values, a different failure than bad
+input selection); the white/black differential learning curve is a
+free run-report finding.
 
-**Q2.** Output format: bare `assert` lines? pytest functions? How is it
-parsed and executed safely? Malformed output → reward 0 or small
-penalty?
+**Q2. ✅ DECIDED (20 Aug, Dom): the model writes PYTEST functions.**
+The harness provides a fixed import surface (e.g. `from solution import
+<fn>`); it swaps `solution.py` between the reference and each mutant
+and reruns the emitted suite. Per-test independence and per-test kill
+attribution come free with pytest. Malformed output (fails to parse /
+collect) → reward 0, logged. Suites with no assertions pass everything
+and kill nothing → reward ≈ 0 by construction (self-punishing).
 
 ## 3. Generator
 
@@ -62,9 +75,13 @@ network), no LLM judge.*
   fails the correct code is worth 0 — correctness of the tests comes
   first).
 - Run against each mutant: a mutant is **killed** if ≥1 test fails.
-- **Q6.** Reward shape: `0 if reference fails else killed/N`? Bonus
-  structure? Penalty for degenerate suites? Justify against GRPO
-  signal needs (dense enough gradient for a 0.5–3B).
+- **Q6. ✅ DECIDED (20 Aug, Dom): `reward = 0 if the reference fails
+  ANY test, else mutants_killed / N`.** Strict all-pass gate is Dom's
+  call; noted sharpness risk for small models (one wrong expected
+  value zeroes the instance). **Named fallback if Sunday's calibration
+  shows reward starving: drop reference-failing tests, score kills on
+  the surviving subset with a penalty factor** — a change to make at
+  calibration only, not before.
 
 **Q7. Degenerate-suite guards** (the natural gaming surface — this is
 where unplanned S3 material lives): empty suites, tests with no
