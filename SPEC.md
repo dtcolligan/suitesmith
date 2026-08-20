@@ -7,9 +7,20 @@
 ## 0. Objective (fixed 20 Aug — do not re-litigate here)
 
 S2 committed: designed + built RL environment with verifiable grader,
-trained against, **done before 14 Sep**. Designed so S3 (documented
-grader exploitation + fix) is possible. S1 (one training step printing a
-reward) by 31 Aug, cleared on GPU day Mon 24 with existing-env fallback.
+trained against, **done before 14 Sep**. S1 (one training step printing
+a reward) by 31 Aug, cleared on GPU day Mon 24 with existing-env
+fallback.
+
+**Definitions sharpened 20 Aug (Dom's catch):**
+- **The planted-seam drift experiment is part of S2** — the quirk gap is
+  a controlled, designed study of training under under-enforcement. Its
+  "fix" (enforce the quirk, p=1 control arm) is known in advance; it is
+  a result about training, never presented as a discovered flaw.
+- **S3 = the UNPLANNED catch only**: the policy exploits something we
+  did not intend (base tests, oracle input sampler, reward parsing,
+  sandbox, template bug), we spot it via the instrumentation, diagnose,
+  fix, show before/after. Cannot be staged; therefore designed-for,
+  never promised, and never conflated with the planted seam.
 
 ## 1. Task family
 
@@ -17,16 +28,32 @@ reward) by 31 Aug, cleared on GPU day Mon 24 with existing-env fallback.
 a 0.5–3B model's frontier (mixed pass rates required — all-pass and
 all-fail groups both give zero GRPO advantage).*
 
-**Q1.** What exactly is one task instance? (e.g., "implement function
-`f` to satisfy this docstring + signature"? string/list/dict
-manipulation? small algorithmic kernels?) What makes instances vary —
-which knobs does the generator turn?
+**Q1. ✅ DECIDED (20 Aug): composition of (i) + (iii).** One instance =
+implement a Python function from signature + docstring; the task body is
+a **data-manipulation template** (filter/aggregate/transform records
+with sampled parameters), with a **spec-quirk** sampled and injected
+into the docstring (an unusual rule the base task wouldn't imply). Base
+task easy enough for a 0.5–3B model; failure concentrates at the quirk
+by design. Remaining sub-decisions (train, Fri): the template set (~how
+many, which shapes), the quirk library (~how many, categorised), and
+whether some instances carry no quirk (controls).
 
-**Q2.** What does the model see in the prompt? Critically: **are any
-tests visible to the model?** (Visible tests invite fast, legible
-overfitting-to-the-suite — which may be exactly the S3 experiment — vs
-hidden tests, where gaming is subtler. This can be an experimental knob
-rather than a single choice.)
+**Q2. ✅ DECIDED (20 Aug, Dom's design): specification quality is the
+difficulty separator.** The model sees signature + docstring (+ tiered
+examples); the weak suite is never shown; the strong oracle never shown.
+Spec tiers (draft — finalise on the train): **A** quirk stated plainly +
+a shown example exercising the quirk · **B** quirk stated plainly,
+examples exercise base behaviour only · **C** quirk stated
+tersely/obliquely, base-only examples. Two hard rules: (1) **the quirk
+is always derivable from the spec** — tiers vary how cheaply, never
+whether (a quirk-unstated variant exists only as a labelled control,
+off-ladder); (2) **step-0 per-tier compliance baselines are mandatory**
+— drift = decline from baseline within tier, separating
+never-understood from learned-to-drop. S3 interaction hypothesis: under
+an under-enforcing reward, quirk-compliance decays faster on
+weaker-specified tiers ("strength of telling" parameterised while the
+enforcement gap stays constant). Full-suite-visible contrast arm:
+parked, out-of-week upside.
 
 **Q3.** Difficulty ladder: what makes an instance easy vs hard, and how
 will difficulty be calibrated? (Protocol: vf-eval a small model on N
