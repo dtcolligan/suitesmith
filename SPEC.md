@@ -52,19 +52,46 @@ and kill nothing → reward ≈ 0 by construction (self-punishing).
 
 ## 3. Generator
 
-**Q3.** Function templates: reuse v1's data-manipulation template
-library (filter/aggregate/transform with sampled parameters) — decide
-the initial set (~how many templates, what parameter ranges).
+**Q3. ✅ DECIDED (20 Aug, approved by Dom): eight template families,
+four built first.** (1) top-k with tie-break · (2) filter-then-aggregate
+· (3) group-by aggregation · (4) dedup with precedence rule · (5)
+threshold windowing (inclusive/exclusive boundary semantics) · (6)
+merge with conflict rule · (7) running/cumulative with reset · (8)
+rounding/formatting rule. **Build order: 1, 2, 4, 5 first**; 3/6/7/8
+only if the weekend runs fast. During build, verify a mutation-class ×
+template coverage matrix across the training templates (every class
+must be hostable by at least one trained template).
 
-**Q4. The mutation engine — the design centre.** Mutation taxonomy:
-operator swaps (`<` vs `<=`), boundary shifts (off-by-one), negated
-conditions, dropped clauses (e.g., a tie-break rule silently removed),
-wrong default, order swap. How many mutants per instance; how is
-subtlety tiered (difficulty knob: crude mutants easy to kill, subtle
-mutants need pointed tests)?
+**Q4. ✅ DECIDED (20 Aug, approved by Dom): the mutation taxonomy.**
+Ten classes with subtlety ratings (1 = dies to almost any test, 3 =
+dies only to spec-reading tests):
+1. Relational swap (`<`↔`<=`) — 2–3 (boundary inputs only)
+2. Off-by-one (`[:k]`→`[:k-1]`) — 2
+3. Arithmetic swap (`+`→`-`, wrong field summed) — 1–2
+4. Condition negation — 1 (crude; kept to anchor the easy end)
+5. Dropped conjunct of a compound filter — 2–3
+6. **Dropped step (tie-break / dedup / final sort removed) — 3, the
+   flagship class** (test must construct the triggering situation)
+7. Direction flip (sort 1; tie-break direction 3)
+8. Aggregation swap (sum→max 1–2; count→count-distinct 2–3)
+9. Default/empty error (wrong init; empty-input behaviour) — 2–3
+10. Wrong field/key — 1 (crude; kept)
 
-**Q5.** Seeding + disjoint train/eval splits (contamination-free by
-construction — state the mechanism).
+Hard rules: **(a) behavioural distinguishability enforced at generation
+time** — every mutant must differ from the reference on ≥1 input,
+verified by running both on an input battery incl. class-targeted
+probes; equivalents discarded and regenerated; each survivor stores a
+**witness input**. **(b) One mutation per mutant** (clean attribution).
+**(c) N = 5 mutants per instance**, drawn across classes with the
+subtlety mix as the second difficulty dial (easy instance ≈ {1,1,2,2,3};
+hard ≈ {2,2,3,3,3} — exact portfolios tuned at calibration).
+
+**Q5. ✅ DECIDED (20 Aug): two-level holdout.** (a) **Template 5
+(threshold windowing) is eval-only** — never trained on, so eval
+measures template-level generalisation (and it's the boundary-heavy
+family, a deliberate stress test of the relational-swap skill). (b)
+Within trained templates (1, 2, 4), disjoint seed ranges for train vs
+eval instances; every instance fully derived from (template, seed).
 
 ## 4. Grader and reward
 
