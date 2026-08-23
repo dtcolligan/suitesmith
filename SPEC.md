@@ -1,4 +1,4 @@
-# SPEC — v2 (design re-based 20 Aug, Dom's frame)
+# SPEC — v2 (design re-based 20 Aug, Dom's frame; built 23 Aug as a verifiers env)
 
 > v1's weak-reward/planted-gap design is RETIRED (see §9). This project
 > trains a capability. Fill the **Q** items by hand (train session, Fri
@@ -121,15 +121,29 @@ is the honest break-and-fix loop.*
 
 *Pre-training gate: per-instance rewards must be MIXED (the 7 Aug
 variance rule: all-zero or all-max groups give GRPO no signal).*
-**Q8.** Calibration protocol: vf-eval the base model on ~50 instances;
-tune template complexity + mutant subtlety until the reward
-distribution has spread.
+**Q8. PROPOSED (operator, 23 Aug — Dom ratifies at calibration):**
+vf-eval the base model on ~50 instances, 8 rollouts each (= training
+group size), white_frac 0.7, easy subtlety mix {1,1,2,2,3} — these are
+the code defaults in `env.py`. Pass gate: ≥60% of instances show
+within-group reward spread AND mean reward lands roughly in 0.2–0.7,
+checked per visibility mode. If starved: raise white-box fraction, ease
+subtlety, enrich docstring examples — the Q6 fallback stays last
+resort. Watch black-box reference-fail rate; if most black-box zeros
+die at the reference gate, lower the black-box fraction. Noted from the
+smoke test: witness-aimed tests CROSS-KILL classes (2 tests killed all
+5 mutants on a top_k instance), so subtlety portfolios are the real
+difficulty dial, not mutant count.
 
 ## 6. Training
 
 *0.5–3B open-weight + LoRA; GRPO on the verifiers stack; ~$50 gate
-budget.* **Q9.** Model pick, rollouts per step, group size, first-run
-step count.
+budget.* **Q9. PROPOSED (operator, 23 Aug — Dom ratifies):**
+Qwen2.5-Coder-1.5B-Instruct (coder checkpoint for parseable pytest;
+Apache 2.0 — note the 3B Coder is research-licensed, so if 1.5B
+starves the fix is easier instances, not a bigger model), LoRA r=16,
+GRPO group size 8, 16 instances/step (128 rollouts), ~1024 max
+completion tokens, first run 50–100 steps on one rented GPU at
+$1–2/hr.
 
 ## 7. Instrumentation
 
@@ -159,7 +173,10 @@ week one never does. Also shelved by name: **structured extraction**
 
 ## 10. Out of scope (unchanged)
 
-Hub upload · verifiers-port · paper · multi-turn · big models · GAB ·
-insolvency. **Rename pending: "covgap" named the old design — Dom picks
-the new name or keeps it (killing mutants IS coverage, so it half
-survives).**
+Hub upload · paper · multi-turn · big models · GAB · insolvency.
+~~verifiers-port~~ — pulled INTO scope by Dom 23 Aug ("write out this
+project in the verifiers framework"); the env is now natively a
+verifiers package (`load_environment()` in `suitesmith/env.py`). Hub
+upload stays out. **Rename RESOLVED 23 Aug: "suitesmith"** (Dom
+delegated the pick; the smith forges the suite, mutants grade the
+forge). Repo moved `~/covgap` → `~/suitesmith`.
