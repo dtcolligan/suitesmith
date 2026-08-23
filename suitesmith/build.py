@@ -35,9 +35,11 @@ class Instance:
     family: str
     seed: int
     visibility: str  # "white" | "black"
+    split: str  # "train" | "eval" — which name pools params drew from
     fn_name: str
     spec: str
     reference: str
+    twin: str  # rename-only reference variant; the gate requires passing it too
     mutants: tuple = field(default_factory=tuple)
 
     def to_info(self) -> dict:
@@ -75,12 +77,19 @@ def _pick_portfolio(menu: list[MutationSpec], portfolio, rng) -> list[MutationSp
     return chosen
 
 
-def build_instance(family: str, seed: int, visibility: str, mix: str = "easy") -> Instance:
+def build_instance(
+    family: str, seed: int, visibility: str, mix: str = "easy", split: str = "train"
+) -> Instance:
     fam = FAMILIES[family]
-    params = fam.sample_params(seed)
+    params = fam.sample_params(seed, split)
     fn_name = fam.fn_name(params)
     ref_src = fam.render(params)
     battery = fam.battery(params, seed)
+    twin_src = fam.twin(params)
+    if twin_src == ref_src:
+        raise EquivalentMutantError(f"{family}:{seed}: twin is textually identical")
+    if find_witness(ref_src, twin_src, fn_name, battery) is not None:
+        raise EquivalentMutantError(f"{family}:{seed}: twin diverges behaviourally")
     menu = fam.mutations(params)
     if len(menu) < N_MUTANTS:
         raise EquivalentMutantError(f"{family}:{seed}: menu smaller than N={N_MUTANTS}")
@@ -104,8 +113,10 @@ def build_instance(family: str, seed: int, visibility: str, mix: str = "easy") -
         family=family,
         seed=seed,
         visibility=visibility,
+        split=split,
         fn_name=fn_name,
         spec=fam.spec(params),
         reference=ref_src,
+        twin=twin_src,
         mutants=tuple(mutants),
     )

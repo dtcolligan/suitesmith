@@ -61,47 +61,68 @@ def _visibility(family: str, seed: int, white_frac: float) -> str:
     return "white" if r.random() < white_frac else "black"
 
 
-def build_rows(family: str, seeds, white_frac: float, mix: str) -> list[dict]:
+def build_rows(
+    family: str, seeds, white_frac: float, mix: str, split: str, tier: str = ""
+) -> list[dict]:
     rows = []
     for seed in seeds:
-        inst = build_instance(family, seed, _visibility(family, seed, white_frac), mix)
+        inst = build_instance(
+            family, seed, _visibility(family, seed, white_frac), mix, split
+        )
+        task = f"{family}:{inst.visibility}" + (f":{tier}" if tier else "")
         rows.append(
-            {
-                "question": render_prompt(inst),
-                "task": f"{family}:{inst.visibility}",
-                "info": inst.to_info(),
-            }
+            {"question": render_prompt(inst), "task": task, "info": inst.to_info()}
         )
     return rows
 
 
 def build_dataset(
     num_train: int = 400,
-    num_eval_seen: int = 60,
-    num_eval_unseen: int = 40,
+    num_eval_seen: int = 30,
+    num_eval_vocab: int = 30,
+    num_eval_window: int = 40,
     white_frac: float = 0.7,
     subtlety_mix: str = "easy",
     train_seed_base: int = 0,
     eval_seed_base: int = 100_000,
 ) -> tuple[list[dict], list[dict]]:
-    """Two-level holdout (SPEC Q5): eval = disjoint seeds on trained families
-    + the eval-only window family; train never sees either."""
+    """Three-tier holdout (SPEC Q5, extended 23 Aug):
+
+    seen     — trained families, unseen seeds, TRAIN name pools. High score
+               here alone is compatible with pool memorisation.
+    vocab    — trained families, unseen seeds, HELD-OUT name pools. Seed-
+               disjoint is not instance-disjoint when pools are small; this
+               tier is disjoint at the vocabulary level.
+    template — the window family, never trained. The real generalisation
+               claim lives or dies here.
+    """
     train_rows: list[dict] = []
     per_fam = -(-num_train // len(TRAINED))  # ceil
     for fam in TRAINED:
         seeds = range(train_seed_base, train_seed_base + per_fam)
-        train_rows.extend(build_rows(fam, seeds, white_frac, subtlety_mix))
+        train_rows.extend(build_rows(fam, seeds, white_frac, subtlety_mix, "train"))
     train_rows = train_rows[:num_train]
 
     eval_rows: list[dict] = []
     per_fam = -(-num_eval_seen // len(TRAINED))
+    seen: list[dict] = []
     for fam in TRAINED:
         seeds = range(eval_seed_base, eval_seed_base + per_fam)
-        eval_rows.extend(build_rows(fam, seeds, white_frac, subtlety_mix))
-    eval_rows = eval_rows[:num_eval_seen]
-    per_fam = -(-num_eval_unseen // max(len(EVAL_ONLY), 1))
+        seen.extend(build_rows(fam, seeds, white_frac, subtlety_mix, "train", "seen"))
+    eval_rows.extend(seen[:num_eval_seen])
+
+    per_fam = -(-num_eval_vocab // len(TRAINED))
+    vocab: list[dict] = []
+    for fam in TRAINED:
+        seeds = range(eval_seed_base + 10_000, eval_seed_base + 10_000 + per_fam)
+        vocab.extend(build_rows(fam, seeds, white_frac, subtlety_mix, "eval", "vocab"))
+    eval_rows.extend(vocab[:num_eval_vocab])
+
+    per_fam = -(-num_eval_window // max(len(EVAL_ONLY), 1))
     for fam in EVAL_ONLY:
         seeds = range(eval_seed_base, eval_seed_base + per_fam)
-        eval_rows.extend(build_rows(fam, seeds, white_frac, subtlety_mix))
+        eval_rows.extend(
+            build_rows(fam, seeds, white_frac, subtlety_mix, "eval", "template")
+        )
 
     return train_rows, eval_rows

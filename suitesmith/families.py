@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import copy
 import random
+import re
 from dataclasses import dataclass
 
 
@@ -35,12 +36,26 @@ def run_source(source: str, fn_name: str, args):
 class Family:
     name: str = ""
     trained: bool = True
+    RENAMES: dict[str, str] = {}
 
     def rng(self, seed: int, stream: str) -> random.Random:
         return random.Random(f"{self.name}:{seed}:{stream}")
 
-    def sample_params(self, seed: int) -> dict:
+    def sample_params(self, seed: int, split: str = "train") -> dict:
         raise NotImplementedError
+
+    def twin(self, params: dict) -> str:
+        """Behaviourally identical, textually different reference variant.
+
+        The gate requires suites to pass this too (decided by Dom 23 Aug):
+        a source-fingerprinting suite passes the reference but fails the
+        twin, so it earns 0. The only invariant shared by reference and
+        twin is behaviour — which is the only thing tests may assert on.
+        """
+        src = self.render(params)
+        for old, new in self.RENAMES.items():
+            src = re.sub(rf"\b{old}\b", new, src)
+        return src
 
     def fn_name(self, params: dict) -> str:
         return params["fn"]
@@ -71,16 +86,28 @@ class TopK(Family):
     """Family 1 (SPEC Q3): top-k with tie-break."""
 
     name = "top_k"
-    PRIMARY = ["score", "priority", "rating", "weight"]
-    TIE = ["ts", "age", "position", "cost"]
-    FN = ["top_records", "pick_top", "select_leading", "best_records"]
+    POOLS = {
+        "pf": {
+            "train": ["score", "priority", "rating", "weight", "impact", "strength", "level", "quality"],
+            "eval": ["merit", "urgency", "magnitude", "prominence"],
+        },
+        "tf": {
+            "train": ["ts", "age", "position", "cost", "distance", "duration", "delay", "batch"],
+            "eval": ["latency", "offset", "depth", "tenure"],
+        },
+        "fn": {
+            "train": ["top_records", "pick_top", "select_leading", "best_records", "leading_entries", "rank_and_take"],
+            "eval": ["strongest_records", "take_top"],
+        },
+    }
+    RENAMES = {"ordered": "ranked"}
 
-    def sample_params(self, seed: int) -> dict:
+    def sample_params(self, seed: int, split: str = "train") -> dict:
         r = self.rng(seed, "params")
         return {
-            "fn": r.choice(self.FN),
-            "pf": r.choice(self.PRIMARY),
-            "tf": r.choice(self.TIE),
+            "fn": r.choice(self.POOLS["fn"][split]),
+            "pf": r.choice(self.POOLS["pf"][split]),
+            "tf": r.choice(self.POOLS["tf"][split]),
             "p_desc": r.random() < 0.75,
             "t_asc": r.random() < 0.75,
         }
@@ -166,19 +193,34 @@ class FilterAgg(Family):
     """Family 2 (SPEC Q3): filter-then-aggregate with a compound filter."""
 
     name = "filter_agg"
-    FILTER = ["amount", "size", "level", "hours"]
-    AGG = ["value", "points", "units", "credit"]
-    FLAG = ["active", "valid", "approved"]
-    FN = ["aggregate_qualifying", "tally_qualifying", "summarise_eligible"]
+    POOLS = {
+        "ff": {
+            "train": ["amount", "size", "hours", "load", "mass", "span", "width", "volume"],
+            "eval": ["tonnage", "breadth", "quota", "heft"],
+        },
+        "af": {
+            "train": ["value", "points", "units", "credit", "revenue", "bonus", "gain", "output"],
+            "eval": ["profit", "dividend", "surplus", "payout"],
+        },
+        "flagf": {
+            "train": ["active", "valid", "approved", "enabled"],
+            "eval": ["confirmed", "eligible"],
+        },
+        "fn": {
+            "train": ["aggregate_qualifying", "tally_qualifying", "summarise_eligible", "total_matching"],
+            "eval": ["combine_passing", "reduce_qualifying"],
+        },
+    }
+    RENAMES = {"kept": "selected", "total": "acc", "v": "item"}
     AGG_SWAP = {"sum": ("max", 2), "count": ("distinct", 3), "max": ("min", 1)}
 
-    def sample_params(self, seed: int) -> dict:
+    def sample_params(self, seed: int, split: str = "train") -> dict:
         r = self.rng(seed, "params")
         return {
-            "fn": r.choice(self.FN),
-            "ff": r.choice(self.FILTER),
-            "af": r.choice(self.AGG),
-            "flagf": r.choice(self.FLAG),
+            "fn": r.choice(self.POOLS["fn"][split]),
+            "ff": r.choice(self.POOLS["ff"][split]),
+            "af": r.choice(self.POOLS["af"][split]),
+            "flagf": r.choice(self.POOLS["flagf"][split]),
             "op": r.choice([">", ">="]),
             "agg": r.choice(["sum", "count", "max"]),
         }
@@ -290,16 +332,28 @@ class Dedup(Family):
     """Family 4 (SPEC Q3): dedup with a precedence rule."""
 
     name = "dedup"
-    KEY = ["user", "device", "region"]
-    PREC = ["ts", "version", "updated"]
-    FN = ["keep_latest", "collapse_by_key", "dedup_records"]
+    POOLS = {
+        "kf": {
+            "train": ["user", "device", "region", "account", "host", "team"],
+            "eval": ["vendor", "channel", "branch"],
+        },
+        "pf": {
+            "train": ["ts", "version", "updated", "revision"],
+            "eval": ["epoch", "sequence"],
+        },
+        "fn": {
+            "train": ["keep_latest", "collapse_by_key", "dedup_records", "newest_per_group"],
+            "eval": ["reduce_duplicates", "latest_entries"],
+        },
+    }
+    RENAMES = {"best": "held", "key": "grp"}
 
-    def sample_params(self, seed: int) -> dict:
+    def sample_params(self, seed: int, split: str = "train") -> dict:
         r = self.rng(seed, "params")
         return {
-            "fn": r.choice(self.FN),
-            "kf": r.choice(self.KEY),
-            "pf": r.choice(self.PREC),
+            "fn": r.choice(self.POOLS["fn"][split]),
+            "kf": r.choice(self.POOLS["kf"][split]),
+            "pf": r.choice(self.POOLS["pf"][split]),
             "last_wins": r.random() < 0.5,
         }
 
@@ -390,12 +444,18 @@ class Window(Family):
 
     name = "window"
     trained = False
-    FN = ["values_in_window", "within_bounds", "clip_to_range"]
+    POOLS = {
+        "fn": {
+            "train": ["values_in_window", "within_bounds", "clip_to_range", "filter_window"],
+            "eval": ["bounded_values", "in_range_values"],
+        },
+    }
+    RENAMES = {"v": "x"}
 
-    def sample_params(self, seed: int) -> dict:
+    def sample_params(self, seed: int, split: str = "train") -> dict:
         r = self.rng(seed, "params")
         return {
-            "fn": r.choice(self.FN),
+            "fn": r.choice(self.POOLS["fn"][split]),
             "lo_inc": r.random() < 0.5,
             "hi_inc": r.random() < 0.5,
         }

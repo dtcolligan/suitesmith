@@ -93,6 +93,17 @@ family, a deliberate stress test of the relational-swap skill). (b)
 Within trained templates (1, 2, 4), disjoint seed ranges for train vs
 eval instances; every instance fully derived from (template, seed).
 
+**Q5-ext. ✅ EXTENDED 23 Aug (Dom: "one thing to fix in the taskset").**
+Seed-disjoint is NOT instance-disjoint when name pools are small — an
+eval seed can redraw a train seed's exact param combo, so (b) alone
+cannot rule out pool memorisation. Fix: pools enlarged (~2×) and every
+pool split train/eval (field names, function names). Eval is now
+**three tiers**, labelled in the task column: `seen` (trained
+families, unseen seeds, train vocab), `vocab` (trained families,
+held-out vocab), `template` (window). The memorisation signature is a
+seen→vocab drop; the generalisation claim lives at `template`. Every
+instance now derives from (template, seed, split).
+
 ## 4. Grader and reward
 
 *Deterministic, execution-based, sandboxed (subprocess, timeout, no
@@ -101,6 +112,17 @@ network), no LLM judge.*
 - Run the suite against the **reference: must pass** (a suite that
   fails the correct code is worth 0 — correctness of the tests comes
   first).
+- **Twin gate (Dom, 23 Aug: "one thing to fix in the grader").** The
+  suite must ALSO pass a rename-only **twin** of the reference (same
+  behaviour, different text; behavioural identity verified on the
+  battery at generation time). This enforces "assert on behaviour
+  only": a source-fingerprinting suite (e.g. `open("solution.py")`
+  compared against the white-box prompt's reference text) passes the
+  reference, kills all mutants, and previously earned 1.0 — now it
+  fails the twin and earns 0. Told→enforced. Residual hole, accepted:
+  a diff-size heuristic over source (small diff = mutant, big diff =
+  twin) survives; exotic for a 1.5B policy, hack-flags watch for it,
+  escalation if it fires = sourceless .pyc distribution.
 - Run against each mutant: a mutant is **killed** if ≥1 test fails.
 - **Q6. ✅ DECIDED (20 Aug, Dom): `reward = 0 if the reference fails
   ANY test, else mutants_killed / N`.** Strict all-pass gate is Dom's
@@ -116,6 +138,15 @@ assertions, enormous suites, flaky tests (nondeterminism), asserting on
 internals (white-box only). Which guards are hard rules vs logged-only?
 *Deliberately do NOT over-guard: log first, patch when exploited — that
 is the honest break-and-fix loop.*
+
+**Q7 status 23 Aug:** "asserting on internals" is now ENFORCED (the §4
+twin gate) — a known-in-advance hole left open would be staging by
+negligence, which is the v1 sin; log-first applies to unknown
+unknowns. Everything else stays logged-only: `hack_flags` per suite
+(source-inspection markers + `never_calls_target`), surfaced as a
+zero-weight rubric metric and in the SUITESMITH_LOG jsonl. Free
+enforcement noted: flaky/nondeterministic tests now have three chances
+to fail the gate (reference + twin + collection), not one.
 
 ## 5. Calibration
 
