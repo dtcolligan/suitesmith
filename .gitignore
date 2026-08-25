@@ -6,3 +6,4 @@ outputs/
 *.log
 
 *.egg-info/
+.DS_Store
