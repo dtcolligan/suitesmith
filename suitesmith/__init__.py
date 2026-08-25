@@ -1,13 +1,13 @@
-"""suitesmith: train a small model to write test suites.
+"""suitesmith — RL environment: train a model to write test suites.
 
-Reward: suite must pass the reference implementation, scored by how many
-mutants it kills (SPEC Q6). verifiers environment entry point below; the
-import is lazy so the generator, harness and tests work without verifiers
-installed.
+Layout follows the prime-envs convention:
+  taskset.py  — task/dataset construction (families.py holds its internals)
+  verify.py   — verification: runner (execution) + grader (reward policy)
+
+TODO(Dom): expose load_environment() -> vf.SingleTurnEnv here, wiring
+taskset rows to the verify rubric. Until then this package is a shell.
 """
 
 
 def load_environment(**kwargs):
-    from suitesmith.env import load_environment as _load
-
-    return _load(**kwargs)
+    raise NotImplementedError("rebuild in progress: wire SingleTurnEnv here")

@@ -10,23 +10,27 @@ test, else `killed / 5`). The trained capability is verifier-writing itself.
 Renamed from `covgap` 23 Aug 2026: the smith forges the suite; killing
 mutants is how the forge is graded.
 
-Status: environment built and self-tested; nothing trained yet. This README
-will never claim otherwise.
+Status: **REBUILD IN PROGRESS (from 25 Aug 2026).** The operator-written
+v1 lives on the `operator-build` branch; `main` holds Dom's own rebuild.
+The 39 tests in `tests/` are the held-out acceptance battery: the rebuild
+is done when they pass against Dom's code. Nothing trained yet. This
+README will never claim otherwise.
 
-## Layout
+## Layout (prime-envs convention: taskset / verify)
 
 - `SPEC.md` — the design document (single source of truth; v1's planted-gap
   design is retired, recorded in §9)
-- `suitesmith/families.py` — template families: parameterised spec +
-  reference generators with per-family mutation menus (SPEC Q3/Q4)
-- `suitesmith/build.py` — instance construction: portfolio selection,
-  distinguishability enforcement, witness inputs (SPEC Q4 hard rules)
-- `suitesmith/harness.py` — sandboxed pytest grader and the Q6 reward
-- `suitesmith/dataset.py` — the two fixed prompt templates (white/black box)
-  and train/eval row building with the Q5 two-level holdout
-- `suitesmith/env.py` — verifiers wiring: `load_environment()` →
+- `suitesmith/taskset.py` — task construction: instance assembly, portfolio
+  selection, witness enforcement, prompt templates, train/eval tiers
+  (SPEC Q1/Q4/Q5-ext)
+- `suitesmith/families.py` — template families (taskset internals): spec +
+  reference generators, mutation menus, twins (SPEC Q3/Q4)
+- `suitesmith/verify.py` — verification: runner (sandboxed execution) +
+  grader (gates and the Q6 reward policy), kept separate for
+  interpretability
+- `suitesmith/__init__.py` — verifiers wiring: `load_environment()` →
   `vf.SingleTurnEnv`; zero-weight rubric funcs carry the §7 instrumentation
-- `tests/` — the environment's own test suite
+- `tests/` — the acceptance battery (operator-written, held out)
 - `scripts/show_instance.py` — print one instance (prompt + mutants) to eyeball
 
 ## Run
