@@ -2,7 +2,12 @@
 
 Folded 26 Aug: families.py merged in — one module owns everything
 upstream of verification, matching the prime-envs package shape
-(__init__ / taskset / verify).
+(__init__ / taskset / verify). Rebuild targets the verifiers.v1 API
+(Dom's call, 26 Aug eve — venv rebuilt on py3.12, verifiers from
+GitHub main): SuitesmithData(vf.TaskData) / SuitesmithTask(vf.Task,
+@vf.reward delegating to verify.py) / SuitesmithTaskset(vf.Taskset)
+wrap a framework-free core of plain functions. The battery below
+tests that core and is dialect-independent.
 
 TODO(Dom): everything. The acceptance battery in tests/ expects this
 module to export BOTH layers:
