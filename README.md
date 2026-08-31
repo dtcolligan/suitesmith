@@ -30,13 +30,14 @@ Matches `prime-envs/environments/*/*` file-for-file
   interpretability
 - `suitesmith/__init__.py` — verifiers wiring: `load_environment()` →
   `vf.SingleTurnEnv`; zero-weight rubric funcs carry the §7 instrumentation
-- `tests/` — the acceptance battery (operator-written, held out; not part
-  of the published environment)
+- Acceptance battery: held out privately (kept outside this repo; not part
+  of the published environment). The rebuild bar — "done when the battery
+  passes" — is graded against that private suite.
 
 ## Run
 
 ```bash
-.venv/bin/python -m pytest tests/ -q          # acceptance battery
+.venv/bin/python -m pytest <private-battery>/ -q   # acceptance battery (held out)
 vf-eval suitesmith -n 50 -r 8 ...             # Q8 calibration (model/endpoint flags per verifiers docs)
 ```
 
