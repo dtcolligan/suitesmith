@@ -38,7 +38,10 @@ Matches `prime-envs/environments/*/*` file-for-file
 
 ```bash
 .venv/bin/python -m pytest <private-battery>/ -q   # acceptance battery (held out)
-vf-eval suitesmith -n 50 -r 8 ...             # Q8 calibration (model/endpoint flags per verifiers docs)
+SUITESMITH_LOG=outputs/calib.jsonl .venv/bin/eval suitesmith -m openai/gpt-4o-mini \
+  -n 50 -r 8 -c 8 --env.agent.harness.id null --env.agent.runtime.type subprocess --no-push
+                                              # Q8 calibration; -c caps episodes in flight
+                                              # (default 128 swamps an 8 GB laptop)
 ```
 
 Set `SUITESMITH_LOG=/path/to/log.jsonl` to append one JSON line per scored

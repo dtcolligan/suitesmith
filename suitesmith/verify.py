@@ -1,5 +1,5 @@
 # /// script
-# dependencies = []
+# dependencies = ["pytest>=8"]
 # ///
 """Verification (prime-envs: the verify side).
 
@@ -15,8 +15,10 @@ Two lives, one file:
   2. Shipped BYTES-AS-CARGO into the training sandbox by taskset.py
      (run_uv_script) and executed as `python verify.py payload.json 5.0`,
      printing a one-line JSON verdict. Inside the sandbox the suitesmith
-     package does not exist, so this file is stdlib-only and imports
-     nothing from the rest of the repo.
+     package does not exist, so this file imports nothing from the rest of
+     the repo. Its one third-party need, pytest, is declared in the script
+     header above; uv installs it into the cargo env (content-addressed,
+     so one install per sandbox, not per rollout).
 """
 
 from __future__ import annotations
@@ -63,32 +65,65 @@ def extract_suite(text) -> str:
 # runner: one suite vs one target, sandboxed, raw outcome only
 # ---------------------------------------------------------------------------
 
-# The driver runs INSIDE the subprocess: import the suite, run every
-# test_* callable, report counts as JSON. It never raises: every outcome
-# is data on stdout, so the runner can tell "suite failed" from "runner
-# broke". BaseException, not Exception: a test that calls sys.exit() or
-# hits KeyboardInterrupt is still a failing test, not a crash.
+# The driver runs INSIDE the subprocess: it hands suite.py to a real
+# in-process pytest session and tallies outcomes through a tiny plugin,
+# so parametrize / fixtures / pytest.raises are all honoured (SPEC Q2:
+# the model writes PYTEST functions, the grader must speak pytest). It
+# never raises: every outcome is data on stdout, so the runner can tell
+# "suite failed" from "runner broke". A test that raises KeyboardInterrupt
+# or SystemExit is still a failing test, not a crash: pytest reports
+# SystemExit as a failure and turns KeyboardInterrupt into exit code 2,
+# which the driver counts as one failed test.
+#
+# Counting rules: a test is one collected item (a parametrize case is its
+# own test); skipped items are not tests (an all-skip suite reaches the
+# no_tests gate); a setup/teardown error is a failed test.
 _DRIVER = """\
-import json, sys
-import importlib.util
+import json, os, sys
 
-spec = importlib.util.spec_from_file_location("suite", "suite.py")
-mod = importlib.util.module_from_spec(spec)
+os.environ.setdefault("PYTEST_DISABLE_PLUGIN_AUTOLOAD", "1")
 try:
-    spec.loader.exec_module(mod)
+    import pytest
 except BaseException:
     print(json.dumps({"error": "import", "n_tests": 0, "failed": 0}))
     sys.exit(0)
 
-tests = [v for k, v in sorted(vars(mod).items())
-         if k.startswith("test_") and callable(v)]
-failed = 0
-for t in tests:
-    try:
-        t()
-    except BaseException:
-        failed += 1
-print(json.dumps({"error": None, "n_tests": len(tests), "failed": failed}))
+
+class Count:
+    def __init__(self):
+        self.passed = 0
+        self.failed = 0
+        self.collect_failed = False
+
+    def pytest_collectreport(self, report):
+        if report.failed:
+            self.collect_failed = True
+
+    def pytest_runtest_logreport(self, report):
+        if report.when == "call":
+            if report.passed:
+                self.passed += 1
+            elif report.failed:
+                self.failed += 1
+        elif report.failed:
+            self.failed += 1
+
+
+count = Count()
+try:
+    rc = pytest.main(
+        ["-q", "-p", "no:cacheprovider", "--rootdir=.", "suite.py"],
+        plugins=[count],
+    )
+except BaseException:
+    rc = 3
+if count.collect_failed:
+    print(json.dumps({"error": "import", "n_tests": 0, "failed": 0}))
+    sys.exit(0)
+if rc in (2, 3, 4):
+    count.failed += 1
+print(json.dumps({"error": None, "n_tests": count.passed + count.failed,
+                  "failed": count.failed}))
 """
 
 
@@ -118,8 +153,9 @@ def run_suite(suite_src: str, target_src: str, timeout: float) -> dict:
     except (json.JSONDecodeError, IndexError):
         return {"status": "crash", "n_tests": 0, "failed": 0}
     if out["error"] == "import":
-        # The suite itself blew up before any test ran: against this
-        # target, everything it asserts is unmet.
+        # The suite blew up at collection (import error, bad decorator,
+        # module-level exception): against this target, everything it
+        # asserts is unmet.
         return {"status": "ok", "n_tests": 0, "failed": 1}
     return {"status": "ok", "n_tests": out["n_tests"], "failed": out["failed"]}
 
