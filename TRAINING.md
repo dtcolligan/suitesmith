@@ -37,13 +37,21 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 
 ## 3. Reward: how a rollout becomes a number
 
-| Decision | Options | Recommendation | Owner | Status |
-|---|---|---|---|---|
-| Taskset commit | frozen tag | `baseline-v2` semantics (2a06f53); HEAD 7bd23cc adds only crash-loudly + the split switch, no reward path | Dom | decided 1 Sep |
-| Reward rule | strict Q6 · Q6 fallback | strict; fallback shelved (4B floor is alive without it) | Dom | decided 1 Sep |
-| Batch composition | train split as built (70% white, mix "easy") · tier/visibility rebalanced | as built for run 1 | Dom | open |
-| Untrusted-code execution | subprocess on the pod · prime sandbox · modal | subprocess on the pod (what calibration ran); 5 s timeout; no isolation from the trainer box | Dom | open |
-| Env-server topology | co-located with trainer · separate | co-located, workers = auto, multiplex 32 | operator | default |
+**Closed 1 Sep 2026 (Dom).** Rule that makes runtime changes clean: **every number in the results table is measured on the runtime training used.** Everything measured before that is calibration and is labelled with its runtime.
+
+| Decision | Options | Decided | Owner |
+|---|---|---|---|
+| Taskset commit | frozen tag | `baseline-v2` semantics (2a06f53); later commits add only crash-loudly, the split switch, and (owed) the payload-over-stdin fix, none of which touch a reward path. | Dom |
+| Reward rule | strict Q6 · Q6 fallback | Strict. Fallback shelved: the 4B floor is alive without it (48/50 groups). | Dom |
+| Batch composition | as built · rebalanced · curriculum | **As built** for run 1: 200 tasks, three families round-robin, 70% white / 30% black, "easy" portfolio, 32 tasks per step. Every calibration number was measured on this mix; changing it is a hypothesis for a later run. Untrained 4B: white 0.63, black 0.57. | Dom |
+| Untrusted-code execution | A subprocess as is · B hardened subprocess · C sandboxes | **C: real sandboxes** (Prime sandbox runtime; Modal as the fallback), image pinned to Python 3.12 to match every calibration run, per-run timeout checked against sandbox CPU speed. The subprocess runtime is the same user and filesystem as the trainer: a test can hog resources, touch checkpoints and logs, and read a sibling rollout's payload. | Dom |
+| Sibling-payload hole | | **Fixed regardless of runtime** (owed, operator): the payload (reference, twin, mutants, witnesses) is written to `/tmp/suitesmith/<trace-id>.json`; with 8 rollouts of one task in flight, `glob` finds a sibling's answer key and a suite built from its witnesses scores 1.0 without reading the spec; the twin gate does not catch it. Fix: payload over stdin, no shared file. Our defect, by inspection. | operator |
+| Env-server topology | | Co-located with the trainer, workers auto, multiplex 32. | operator |
+
+**Baselines owed on the training runtime before run 1** (the calibration numbers of 1 Sep are history, labelled "subprocess, MacBook Air"):
+- Qwen3.5-4B, train and eval splits, temperature 1.0, max_tokens 4096, thinking per stage 1's pending decision. This is the pre-training row of the results table.
+- qwen3-8b eval split (scale reference row). Dom's rule: all Qwen models that appear in the table are re-measured on the final runtime.
+- gpt-4o-mini, 0.8B, 2B, 35B-A3B stay calibration-only unless promoted to the table.
 
 ## 4. Update: how numbers become a gradient
 
@@ -90,7 +98,7 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 
 1. Thinking on/off, decided when the thinking-off baseline lands (stage 1; everything else in stage 1 closed 1 Sep)
 2. ~~Stage 2 closed 1 Sep~~ (pre-run floor re-measure at T=1.0, cap 4096 owed)
-3. Batch composition, isolation (stage 3)
+3. ~~Stage 3 closed 1 Sep~~ (owed: sandbox runtime working, payload-over-stdin, Qwen re-baselines on it)
 3. Which checkpoint is the result; success criterion (stage 5)
 4. GPUs; cost and time ceilings (stage 6)
 5. Decision record for the checkpoint change (stage 7)
