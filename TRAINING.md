@@ -99,25 +99,24 @@ Consequence for stage 1's open thinking row: both ceilings cover thinking-on, so
 
 ## 7. Record
 
-| Decision | Options | Recommendation | Owner | Status |
-|---|---|---|---|---|
-| Pinned env tag | | `baseline-v2` (+ HEAD hash in the config) | operator | default |
-| Config committed | | yes, under `configs/` | operator | default |
-| Seeds | | fixed and recorded | operator | default |
-| Run naming / logs | local · W&B | local S3 logs + trainer logs in the run dir; W&B optional | operator | default |
-| Decision records | | one per deviation from SPEC; the checkpoint change owes one (Dom writes) | Dom | open |
+**Closed 1 Sep 2026 (Dom: defaults accepted; checkpoint decision record to be written 2 Sep).**
 
-## Open decisions, in the order they get walked
+| Decision | Decided | Owner |
+|---|---|---|
+| Pinned env tag | `baseline-v2` for reward semantics; the exact HEAD hash written into the run config (later commits added the split switch, crash-loudly, the payload path; no reward path). | operator |
+| Config committed | `configs/run1.toml` (or prime-rl's expected form), committed before launch, never edited after. | operator |
+| Seeds | Fixed and in the config: dataset shuffle, sampling where the server honours it, trainer init. | operator |
+| Run naming and logs | `run1-4b-<hash>`; trainer logs + the S3 verdict log kept in the run directory and committed at the end (the S3 log is the audit trail for every stop rule). W&B optional; local is the record. | operator |
+| Decision records | One per deviation from SPEC, Dom's voice, `~/career/record/decisions/`. **Owed 2 Sep: the checkpoint change (Qwen2.5-Coder-1.5B → Qwen3.5-4B).** KL plan, thinking, runtime rule are recorded in this file in Dom's words. | Dom |
 
-6. ~~Stage 6 closed 1 Sep~~
+## Where it stands (1 Sep 2026, end of day)
 
-5. ~~Stage 5 closed 1 Sep~~ (Dom to confirm the test that operationalises his criterion)
+Stages 2–7 closed; stage 1 closed except **thinking on/off**, decided by the thinking-off baseline (running tonight).
 
-4. ~~Stage 4 closed 1 Sep~~ (N = 200; stage 6's ceiling must cover it)
-
-1. Thinking on/off, decided when the thinking-off baseline lands (stage 1; everything else in stage 1 closed 1 Sep)
-2. ~~Stage 2 closed 1 Sep~~ (pre-run floor re-measure at T=1.0, cap 4096 owed)
-3. ~~Stage 3 closed 1 Sep~~ (sandbox runtime verified, payload fix shipped; owed: Qwen re-baselines on the sandbox once thinking is decided)
-3. Which checkpoint is the result; success criterion (stage 5)
-4. GPUs; cost and time ceilings (stage 6)
-5. Decision record for the checkpoint change (stage 7)
+Owed before run 1, in order:
+1. Thinking decision (Dom), on tonight's numbers with the ~5× cost gap beside them.
+2. Dom confirms the test under the stage-5 criterion.
+3. Checkpoint decision record (Dom, 2 Sep).
+4. Sandbox CPU pricing checked (operator).
+5. Re-baselines on the sandbox runtime at T = 1.0, cap 4096, thinking per (1): 4B both splits, 8B eval split (operator).
+6. prime-rl config written from this file, committed (operator), then launch (Dom's go).
