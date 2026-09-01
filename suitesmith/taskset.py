@@ -79,7 +79,7 @@ class MutantSpec:
     source: str        # full source of the mutated function
     mclass: int        # Q4 taxonomy class id, 1–10
     subtlety: int      # 1–3
-    witness: tuple     # args demonstrating divergence; () until verified
+    witness: str       # repr of args demonstrating divergence; "" until verified
 
 
 # ── framework-free core (names pinned by the battery) ────────────────
@@ -262,7 +262,7 @@ class TopK(Family):
         ]
         return [
             MutantSpec(source=self.render(params, mutate=m), mclass=c,
-                       subtlety=s, witness=())
+                       subtlety=s, witness="")
             for m, c, s in menu
         ]
 
@@ -388,7 +388,7 @@ class FilterAgg(Family):
         ]
         return [
             MutantSpec(source=self.render(params, mutate=m), mclass=c,
-                       subtlety=s, witness=())
+                       subtlety=s, witness="")
             for m, c, s in menu
         ]
 
@@ -501,7 +501,7 @@ class Dedup(Family):
         ]
         return [
             MutantSpec(source=self.render(params, mutate=m), mclass=c,
-                       subtlety=s, witness=())
+                       subtlety=s, witness="")
             for m, c, s in menu
         ]
 
@@ -596,7 +596,7 @@ class Window(Family):
         ]
         return [
             MutantSpec(source=self.render(params, mutate=m), mclass=c,
-                       subtlety=s, witness=())
+                       subtlety=s, witness="")
             for m, c, s in menu
         ]
 
@@ -644,7 +644,9 @@ def build_instance(family, seed, visibility, mix, split="train"):
         ref_outs = (run_source(reference, fn, args) for args in cases)
         for args, ref_out in zip(cases, ref_outs):
             if run_source(m.source, fn, args) != ref_out:
-                witnessed.append(replace(m, witness=args))
+                # Stored as repr so it is JSON-safe in to_info() and can be
+                # pasted straight into a test call: fn(*eval(witness)).
+                witnessed.append(replace(m, witness=repr(args)))
                 break
     if len(witnessed) < 5:
         raise RuntimeError(
