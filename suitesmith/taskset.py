@@ -798,13 +798,13 @@ class SuitesmithTask(vf.Task[SuitesmithData]):
             self._log({"gate": "malformed", "reward": 0.0, "killed": 0,
                        "n_tests": 0, "flags": []})
             return 0.0
-        payload_path = f"/tmp/suitesmith/{trace.id}.json"
-        await runtime.write(
-            payload_path,
-            json.dumps({"suite": suite, **self.data.to_info()}).encode(),
-        )
+        # Payload via the process environment, never a shared file: with
+        # eight rollouts of one task in flight, a file under /tmp is a
+        # sibling's answer key (mutants + witnesses) one glob away.
+        # verify.py pops it before any suite runs.
         result = await runtime.run_uv_script(
-            VERIFY, args=[payload_path, str(TIMEOUT)]
+            VERIFY, args=[str(TIMEOUT)],
+            env={"SUITESMITH_PAYLOAD": json.dumps({"suite": suite, **self.data.to_info()})},
         )
         if result.exit_code != 0:
             # A reward is a verdict: verifier crash ⇒ raise, never 0.0.

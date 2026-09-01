@@ -44,8 +44,8 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 | Taskset commit | frozen tag | `baseline-v2` semantics (2a06f53); later commits add only crash-loudly, the split switch, and (owed) the payload-over-stdin fix, none of which touch a reward path. | Dom |
 | Reward rule | strict Q6 · Q6 fallback | Strict. Fallback shelved: the 4B floor is alive without it (48/50 groups). | Dom |
 | Batch composition | as built · rebalanced · curriculum | **As built** for run 1: 200 tasks, three families round-robin, 70% white / 30% black, "easy" portfolio, 32 tasks per step. Every calibration number was measured on this mix; changing it is a hypothesis for a later run. Untrained 4B: white 0.63, black 0.57. | Dom |
-| Untrusted-code execution | A subprocess as is · B hardened subprocess · C sandboxes | **C: real sandboxes** (Prime sandbox runtime; Modal as the fallback), image pinned to Python 3.12 to match every calibration run, per-run timeout checked against sandbox CPU speed. The subprocess runtime is the same user and filesystem as the trainer: a test can hog resources, touch checkpoints and logs, and read a sibling rollout's payload. | Dom |
-| Sibling-payload hole | | **Fixed regardless of runtime** (owed, operator): the payload (reference, twin, mutants, witnesses) is written to `/tmp/suitesmith/<trace-id>.json`; with 8 rollouts of one task in flight, `glob` finds a sibling's answer key and a suite built from its witnesses scores 1.0 without reading the spec; the twin gate does not catch it. Fix: payload over stdin, no shared file. Our defect, by inspection. | operator |
+| Untrusted-code execution | A subprocess as is · B hardened subprocess · C sandboxes | **C: real sandboxes** (Prime sandbox runtime; Modal as the fallback), image pinned to Python 3.12 to match every calibration run, per-run timeout checked against sandbox CPU speed. **Verified 1 Sep 17:1x:** `--env.agent.runtime.type prime --env.agent.runtime.image python:3.12-slim`, 2×2 gpt-4o-mini scored 1.0/1.0/0.8/0.8 with identical verdicts to the subprocess path; boot 7 s + setup 3 s + scoring ~4 s per rollout, so ~25–30 s wall per rollout against ~10 s locally, but remote, so the local `-c` cap no longer applies. The subprocess runtime is the same user and filesystem as the trainer: a test can hog resources, touch checkpoints and logs, and read a sibling rollout's payload. | Dom |
+| Sibling-payload hole | | **Fixed 1 Sep 17:1x** (payload now travels in `SUITESMITH_PAYLOAD`, popped by verify.py before any suite runs; battery pins that the suite's process cannot see it). Was: the payload (reference, twin, mutants, witnesses) is written to `/tmp/suitesmith/<trace-id>.json`; with 8 rollouts of one task in flight, `glob` finds a sibling's answer key and a suite built from its witnesses scores 1.0 without reading the spec; the twin gate does not catch it. Fix: payload over stdin, no shared file. Our defect, by inspection. | operator |
 | Env-server topology | | Co-located with the trainer, workers auto, multiplex 32. | operator |
 
 **Baselines owed on the training runtime before run 1** (the calibration numbers of 1 Sep are history, labelled "subprocess, MacBook Air"):
@@ -98,7 +98,7 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 
 1. Thinking on/off, decided when the thinking-off baseline lands (stage 1; everything else in stage 1 closed 1 Sep)
 2. ~~Stage 2 closed 1 Sep~~ (pre-run floor re-measure at T=1.0, cap 4096 owed)
-3. ~~Stage 3 closed 1 Sep~~ (owed: sandbox runtime working, payload-over-stdin, Qwen re-baselines on it)
+3. ~~Stage 3 closed 1 Sep~~ (sandbox runtime verified, payload fix shipped; owed: Qwen re-baselines on the sandbox once thinking is decided)
 3. Which checkpoint is the result; success criterion (stage 5)
 4. GPUs; cost and time ceilings (stage 6)
 5. Decision record for the checkpoint change (stage 7)

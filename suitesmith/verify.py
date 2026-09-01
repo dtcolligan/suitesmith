@@ -24,6 +24,7 @@ Two lives, one file:
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -243,10 +244,20 @@ def score_suite(suite_src, info: dict, timeout: float = DEFAULT_TIMEOUT) -> Scor
 
 
 def _main() -> None:
-    payload_path = Path(sys.argv[1])
-    payload = json.loads(payload_path.read_text())
-    payload_path.unlink()  # humaneval convention: one payload per rollout, no litter
-    timeout = float(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_TIMEOUT
+    # Two ways in. Training path: the payload arrives in the process
+    # environment (SUITESMITH_PAYLOAD) and is popped before any suite
+    # runs, so no file exists for a sibling rollout to glob and the
+    # suite's own process never inherits it. File path kept for the
+    # battery and local use: `verify.py payload.json [timeout]`.
+    env_payload = os.environ.pop("SUITESMITH_PAYLOAD", None)
+    if env_payload is not None:
+        payload = json.loads(env_payload)
+        timeout = float(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_TIMEOUT
+    else:
+        payload_path = Path(sys.argv[1])
+        payload = json.loads(payload_path.read_text())
+        payload_path.unlink()  # one payload per rollout, no litter
+        timeout = float(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_TIMEOUT
     res = score_suite(payload["suite"], payload, timeout=timeout)
     # One JSON line on stdout is the whole interface back to taskset.py.
     print(json.dumps({
