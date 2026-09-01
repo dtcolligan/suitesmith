@@ -49,6 +49,8 @@ SUITESMITH_LOG=outputs/calib.jsonl .venv/bin/eval suitesmith -m openai/gpt-4o-mi
 .venv/bin/python scripts/calib_report.py outputs/<run-dir>   # why is it not saturating
 ```
 
+Training run plan and every infrastructure decision, stage by stage: [TRAINING.md](TRAINING.md).
+
 Set `SUITESMITH_LOG=/path/to/log.jsonl` to append one JSON line per scored
 suite (gate, kills by class, suite size) — the S3 net.
 
