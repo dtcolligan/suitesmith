@@ -55,16 +55,16 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 
 ## 4. Update: how numbers become a gradient
 
-**OPEN. Walked 1 Sep 2026; nothing below is decided.** Rows are the operator's proposals; Dom's calls are the two marked Dom. The gradient uses each rollout's advantage, its reward relative to its own group: `A = (r − mean(group)) / std(group)`. No value model; the group is the baseline.
+**1 Sep 2026 (Dom): advantage normalisation and the four conventional defaults decided; step count open pending Dom's word.** The gradient uses each rollout's advantage, its reward relative to its own group: `A = (r − mean(group)) / std(group)`. No value model; the group is the baseline.
 
-| Decision | Options | Proposed | Owner |
+| Decision | Options | Decided / proposed | Owner |
 |---|---|---|---|
-| Advantage normalisation | group mean only (Dr. GRPO) · mean and std | Mean and std (default). The trade, which Dom worked through on 1 Sep without deciding: in a group of seven 0.2s and one 0.4, the 0.4 gets A ≈ +2.6 and each 0.2 gets −0.4; one extra mutant killed is the strongest signal in the batch. Amplifies the first success on hard tasks; also amplifies a lucky kill. | Dom (open) |
-| Clipping | PPO ratio clip | ε = 0.2 (default). Bounds how far any token's probability moves in one step, needed because async-level-1 rollouts are one step off-policy. Stability, not a result knob. | operator |
-| Learning rate / schedule | | 1e-6, constant, no warm-up in run 1. RL full fine-tune of a 4B lives in 1e-6 to 5e-6; too high shows as an entropy crash in stage 5's telemetry. | operator |
-| Tasks per step | 16 · 32 · 64 | 32 (× G = 8 → 256 rollouts per step). | operator |
-| Group filtering | none · drop zero-spread groups | Drop all-zero and all-one groups before the update; they carry no gradient and would otherwise fill the batch. Pairs with stage 2's G→16 rule. | operator |
-| Steps / stop condition | fixed N · rule | Fixed N, proposed 200 (≈ 32 passes over the 200 training tasks, ~50M generated tokens at thinking-on lengths, roughly 6–10 h on 2×H100). Fixed because a "stop when eval plateaus" rule is a post-hoc decision dressed as a schedule. Stage 6's cost ceiling would set the final N; stage 5's stop rules the only early exit. | Dom (open) |
+| Advantage normalisation | group mean only (Dr. GRPO) · mean and std | **Mean and std** (decided 1 Sep). The trade, worked through by Dom: in a group of seven 0.2s and one 0.4, the 0.4 gets A ≈ +2.6 and each 0.2 gets −0.4; one extra mutant killed is the strongest signal in the batch. Amplifies the first success on hard tasks; also amplifies a lucky kill. | Dom |
+| Clipping | PPO ratio clip | **ε = 0.2** (decided 1 Sep as conventional: DeepSeekMath, SimpleRL; DAPO uses 0.2/0.28 asymmetric). Bounds how far any token's probability moves in one step, needed because async-level-1 rollouts are one step off-policy. Stability, not a result knob. | operator |
+| Learning rate / schedule | | **1e-6, constant** (decided 1 Sep as conventional: DeepSeekMath, DAPO), no warm-up in run 1. RL full fine-tune of a 4B lives in 1e-6 to 5e-6; too high shows as an entropy crash in stage 5's telemetry. | operator |
+| Tasks per step | 16 · 32 · 64 | **32** (× G = 8 → 256 rollouts per step; decided 1 Sep). Small side of the literature's 256–1024 but standard for one node. | operator |
+| Group filtering | none · drop zero-spread groups | **Drop all-zero and all-one groups** before the update (decided 1 Sep; DAPO's dynamic sampling); they carry no gradient and would otherwise fill the batch. Pairs with stage 2's G→16 rule. | operator |
+| Steps / stop condition | fixed N · rule | **Open.** Fixed N; literature shape (DeepSeekMath, SimpleRL-Zoo, Dr. GRPO, DAPO; exact figures to verify before citing): at a few hundred rollouts a step most gain lands in the first 100–200 steps. Proposed 200 (≈ 32 passes over the 200 training tasks, ~50M generated tokens at thinking-on lengths, roughly 6–10 h on 2×H100). Fixed because a "stop when eval plateaus" rule is a post-hoc decision dressed as a schedule. Stage 6's cost ceiling would set the final N; stage 5's stop rules the only early exit. | Dom (open) |
 
 ## 5. Evidence: how you know it worked, or cheated
 
@@ -98,7 +98,7 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 
 ## Open decisions, in the order they get walked
 
-4. Stage 4: advantage normalisation and step count are Dom's, undecided; four operator defaults proposed
+4. Stage 4: step count N (Dom); everything else decided 1 Sep
 
 1. Thinking on/off, decided when the thinking-off baseline lands (stage 1; everything else in stage 1 closed 1 Sep)
 2. ~~Stage 2 closed 1 Sep~~ (pre-run floor re-measure at T=1.0, cap 4096 owed)
