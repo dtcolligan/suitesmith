@@ -11,6 +11,7 @@ the humaneval pattern. Design authority: README §Design specification.
 
 import copy
 import json
+import os
 import random
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -778,7 +779,10 @@ class SuitesmithTask(vf.Task[SuitesmithData]):
 
         suite = extract_suite(trace.last_reply)
         if not suite.strip():
-            return 0.0  # malformed gate: nothing to run, before any sandbox
+            # malformed gate: nothing to run, before any sandbox
+            self._log({"gate": "malformed", "reward": 0.0, "killed": 0,
+                       "n_tests": 0, "flags": []})
+            return 0.0
         payload_path = f"/tmp/suitesmith/{trace.id}.json"
         await runtime.write(
             payload_path,
@@ -791,7 +795,21 @@ class SuitesmithTask(vf.Task[SuitesmithData]):
             # A reward is a verdict: verifier crash ⇒ raise, never 0.0.
             raise RuntimeError(f"verify.py failed: {result.stderr.strip()[-1000:]}")
         verdict = json.loads(result.stdout.strip().splitlines()[-1])
+        self._log(verdict)
         return float(verdict["reward"])
+
+    def _log(self, verdict: dict) -> None:
+        # README's S3 net: one JSON line per scored suite, appended live
+        # so calibration can be watched with tail -f. Off unless
+        # SUITESMITH_LOG names a file.
+        log_path = os.environ.get("SUITESMITH_LOG")
+        if log_path:
+            with open(log_path, "a") as f:
+                f.write(json.dumps({
+                    "name": self.data.name,
+                    "visibility": self.data.visibility,
+                    **verdict,
+                }) + "\n")
 
 
 class SuitesmithTaskset(vf.Taskset[SuitesmithTask, vf.TasksetConfig]):
@@ -804,7 +822,8 @@ class SuitesmithTaskset(vf.Taskset[SuitesmithTask, vf.TasksetConfig]):
             data = build_instance(info["family"], info["seed"],
                                   info["visibility"], info["mix"],
                                   info["split"])
-            data.idx = i
+            # TaskData is frozen; stamp the row index via a copy.
+            data = data.model_copy(update={"idx": i})
             tasks.append(SuitesmithTask(data, config=self.config.task))
         return tasks
 
