@@ -12,13 +12,17 @@ Walked one stage at a time; each stage closes with Dom's call.
 
 ## 1. Policy: what is being trained
 
-| Decision | Options | Recommendation | Owner | Status |
-|---|---|---|---|---|
-| Checkpoint | Qwen2.5-Coder-1.5B (SPEC) · Qwen3.5-0.8B/2B/4B · qwen3-8b | **Qwen3.5-4B**: strict floor 0.614, 48/50 groups with gradient; 2B/0.8B starved; 8B ~0.9 | Dom | decided 1 Sep |
-| Update method | full fine-tune · LoRA | full fine-tune (what "trained" means in the report; fits on 2×H100) | Dom | **decided 1 Sep: full fine-tune** |
-| Precision | bf16 · fp32 master weights | bf16 with fp32 optimiser state (prime-rl default) | operator | default |
-| Reference model / KL | KL penalty to the start checkpoint · none | Dom uncertain (1 Sep). Proposed plan: run 1 with β = 0 so the grader faces the full optimisation pressure the project exists to measure, stop rules (stage 5) as the guard; if hacking appears, run 2 with a small β (0.001–0.01) as the contrast. Either way the choice is pre-registered before the run | Dom | open |
-| Chat template / thinking | thinking on · thinking off | **on, provisional** (every baseline so far is thinking-on; ~5k output tokens/rollout, the cost driver). Thinking-off floor queued 1 Sep on both splits (`--sampling.reasoning-effort none`, verified: 867 vs 2.4K tokens on one rollout, no `reasoning_content`). Revisit with the number | Dom | provisional |
+**Closed 1 Sep 2026 (Dom).**
+
+| Decision | Options | Decided | Owner |
+|---|---|---|---|
+| Checkpoint | Qwen2.5-Coder-1.5B (SPEC) · Qwen3.5-0.8B/2B/4B · qwen3-8b | **Qwen3.5-4B.** Strict floor 0.614 on the train split, 48/50 groups with gradient, 0 dead; eval split 0.50 (seen 0.63 / vocab 0.59 / window 0.28). 2B and 0.8B starve (15/50, 8/50); 8B ~0.9, nothing left to learn. Deviation from SPEC; decision record owed. | Dom |
+| Update method | full fine-tune · LoRA | **Full fine-tune.** The report's claim is "RL on a 4B"; adapters cap how far the policy can move, a confound run 1 does not want. Memory: ~64 GB for weights + grads + Adam + fp32 master, so trainer and inference on separate cards. | Dom |
+| Precision | bf16 · fp32 | bf16 weights and grads, fp32 optimiser state and master copy (prime-rl default). | operator |
+| Reference / KL | β = 0 · small β · standard β | **Run 1: β = 0.** The grader must face the full optimisation pressure the project exists to measure; a leash would make "no hacks appeared" a fact about the leash. Stop rules in stage 5 are the guard. **Run 2: small β (0.001–0.01)** as the contrast, run whether or not run 1 hacks. Both fixed here, before any training, so neither is post-hoc. | Dom |
+| Thinking | on · off | **On for run 1.** Every baseline is thinking-on; the trained artefact is a model that reasons then writes tests. Cost: ~5k output tokens per rollout, the dominant cost. A thinking-off baseline is queued on both splits (`--sampling.reasoning-effort none`) for information; it reopens this row only if the off floor matches or beats the on floor on the train split, in which case the cheaper artefact is at least as good and the choice is remade with that number. | Dom |
+
+Reading of Dom's KL wording ("run 1 with KL, run 2 with small KL", 1 Sep 16:5x) taken as the plan above (run 1 unleashed, run 2 leashed); correct here if the other reading was meant.
 
 ## 2. Rollouts: how samples are produced
 
@@ -82,7 +86,7 @@ Walked one stage at a time; each stage closes with Dom's call.
 
 ## Open decisions, in the order they get walked
 
-1. ~~Update method~~ (decided) · KL (Dom uncertain; plan proposed) · thinking (provisional on; off-floor queued) (stage 1)
+1. ~~Stage 1 closed 1 Sep~~ (thinking row reopens only if the off floor ≥ the on floor)
 2. Batch composition, isolation (stage 3)
 3. Which checkpoint is the result; success criterion (stage 5)
 4. GPUs; cost and time ceilings (stage 6)
