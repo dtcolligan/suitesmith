@@ -24,12 +24,16 @@ Walked one stage at a time; each stage closes with Dom's call.
 
 ## 2. Rollouts: how samples are produced
 
-| Decision | Options | Recommendation | Owner | Status |
-|---|---|---|---|---|
-| Group size (rollouts per task) | 4 · 8 · 16 | 8, matched to every calibration number | operator | default |
-| Sampling temperature | model default · 1.0 · lower | 1.0 for training (diversity inside a group is the gradient) | operator | default |
-| max_tokens | none · 4096 · 8192 | 4096 for run 1; **re-measure the floor under the cap before training** | operator | default |
-| Async level (steps off-policy allowed) | 0 (sync) · 1 · 2 | prime-rl default (1); raise only if inference starves the trainer | operator | default |
+**Closed 1 Sep 2026 (Dom).** The gradient for a task is the spread of rewards inside its group; a group that is all-zero or all-success contributes nothing.
+
+| Decision | Options | Decided | Owner |
+|---|---|---|---|
+| Group size G | 4 · 8 · 16 | **8**, matched to every calibration number. Untrained 4B on the train split: 0 tasks at 0/8, 2 at 1/8, median pass rate 0.62, so 8 is enough at the start. Rule: if the alive-group fraction of a step falls under 60% (easy tasks saturating to 8/8), raise G to 16 for the rest of the run. | operator |
+| Temperature | provider default · 1.0 · lower | **1.0.** The distribution the policy-gradient maths assumes; spread inside a group is the signal. Today's baselines used the provider default (recorded as null); the floor is re-measured at 1.0 before the run. | Dom |
+| max_tokens | none · 4096 · 8192 | **4096.** Unbounded thinking (5k typical, 20k tail) stalls steps; a truncated rollout has no code block and scores 0 through the malformed gate, which is the intended price. The floor is re-measured under the cap before the run. Interacts with the open thinking decision (off-rollouts ~900 tokens never reach it). | Dom |
+| Async level | 0 · 1 · 2 | **1** (prime-rl default): inference may generate with weights one step stale so trainer and inference do not idle on each other. Throughput only. | operator |
+
+Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0 and max_tokens 4096 (one run, ~$0.6).
 
 ## 3. Reward: how a rollout becomes a number
 
@@ -85,7 +89,8 @@ Walked one stage at a time; each stage closes with Dom's call.
 ## Open decisions, in the order they get walked
 
 1. Thinking on/off, decided when the thinking-off baseline lands (stage 1; everything else in stage 1 closed 1 Sep)
-2. Batch composition, isolation (stage 3)
+2. ~~Stage 2 closed 1 Sep~~ (pre-run floor re-measure at T=1.0, cap 4096 owed)
+3. Batch composition, isolation (stage 3)
 3. Which checkpoint is the result; success criterion (stage 5)
 4. GPUs; cost and time ceilings (stage 6)
 5. Decision record for the checkpoint change (stage 7)
