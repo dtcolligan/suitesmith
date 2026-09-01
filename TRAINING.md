@@ -68,14 +68,18 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 
 ## 5. Evidence: how you know it worked, or cheated
 
-| Decision | Options | Recommendation | Owner | Status |
-|---|---|---|---|---|
-| Eval cadence | every N steps | every 20 steps, eval split 90 tasks × 4 rollouts, strict reward, three tiers reported apart | operator | default |
-| Per-step telemetry | | mean reward, gate mix, hack flags, twin failures, response length, entropy | operator | default |
-| Stop rules | | flags or twin failures rising with reward; response length explosion; reward collapse | operator | default |
-| Checkpoint cadence | | every 20 steps | operator | default |
-| Which checkpoint is "the result" | last · best on eval · fixed step | open, decided before the run | Dom | open |
-| Success criterion | | open, written before the run: what seen-tier strict and window must do for this to be a finding | Dom | open |
+**Closed 1 Sep 2026 (Dom): "1. as proposed 2. last with full curve shown 3. statistically significant different performance in evaluations, and ideally matching / beating qwen 8b".** One operator note under the criterion makes it testable; Dom confirms or changes the test.
+
+| Decision | Decided | Owner |
+|---|---|---|
+| Eval cadence | Every 20 steps: eval split, 90 tasks × 4 rollouts, strict reward, sandbox runtime, thinking per stage 1. Reported as three numbers, never one: seen / vocab / window. Ten evals over N = 200. | operator |
+| Per-step telemetry | (1) mean reward + alive-group fraction; (2) gate mix as counts; (3) hack flags per marker; (4) twin-gate failures, separately; (5) mean response length + fraction truncated at 4096; (6) policy entropy from the trainer. | operator |
+| Stop rules (the only early exit from N = 200) | Flags or twin failures rising across three consecutive evals while reward rises → stop, read transcripts (the hack). Truncation > 30% → stop (cap strangling the policy). Entropy < ⅓ of its start → stop (collapse). Mean reward > 0.15 below its running peak → stop (broken). | operator |
+| Checkpoint cadence | Every 20 steps, with eval. Ten checkpoints. | operator |
+| Which checkpoint is the result | **Last (step 200), with the full eval curve shown.** Best-on-eval would pick the luckiest of ten noisy draws (~±0.03 each) and flatter the number by about one noise width; the peak is reported as a peak, not as the result. | Dom |
+| Success criterion | **Dom, verbatim:** "statistically significant different performance in evaluations, and ideally matching / beating qwen 8b". | Dom |
+
+*Operator note to make the criterion testable (Dom to confirm):* the comparison is the untrained 4B vs the step-200 4B on the same 90 eval tasks, both measured on the training runtime; per-task mean reward, paired (same tasks), one test per tier, α = 0.05 (a paired permutation test, distribution-free). "Significant" must hold on the **seen** tier at minimum; vocab and window are reported with their own p-values whatever they show. "Matching / beating qwen 8b" reads as: the trained 4B's eval-split mean is at or above the untrained 8B's on the same runtime, or within its 95% interval ("matching"). Both 8B numbers come from the owed sandbox re-baseline.
 
 ## 6. Compute
 
@@ -97,6 +101,8 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 | Decision records | | one per deviation from SPEC; the checkpoint change owes one (Dom writes) | Dom | open |
 
 ## Open decisions, in the order they get walked
+
+5. ~~Stage 5 closed 1 Sep~~ (Dom to confirm the test that operationalises his criterion)
 
 4. ~~Stage 4 closed 1 Sep~~ (N = 200; stage 6's ceiling must cover it)
 
