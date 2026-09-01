@@ -64,7 +64,7 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 | Learning rate / schedule | | **1e-6, constant** (decided 1 Sep as conventional: DeepSeekMath, DAPO), no warm-up in run 1. RL full fine-tune of a 4B lives in 1e-6 to 5e-6; too high shows as an entropy crash in stage 5's telemetry. | operator |
 | Tasks per step | 16 · 32 · 64 | **32** (× G = 8 → 256 rollouts per step; decided 1 Sep). Small side of the literature's 256–1024 but standard for one node. | operator |
 | Group filtering | none · drop zero-spread groups | **Drop all-zero and all-one groups** before the update (decided 1 Sep; DAPO's dynamic sampling); they carry no gradient and would otherwise fill the batch. Pairs with stage 2's G→16 rule. | operator |
-| Steps / stop condition | fixed N · rule | **N = 200** (Dom, 1 Sep). Literature shape (DeepSeekMath, SimpleRL-Zoo, Dr. GRPO, DAPO; exact figures to verify before citing): at a few hundred rollouts a step most gain lands in the first 100–200 steps. 200 (≈ 32 passes over the 200 training tasks, ~50M generated tokens at thinking-on lengths, roughly 6–10 h on 2×H100). Fixed because a "stop when eval plateaus" rule is a post-hoc decision dressed as a schedule. Stage 6's cost ceiling would set the final N; stage 5's stop rules the only early exit. | Dom (open) |
+| Steps / stop condition | fixed N · rule | **N = 200** (Dom, 1 Sep). Literature shape (DeepSeekMath, SimpleRL-Zoo, Dr. GRPO, DAPO; exact figures to verify before citing): at a few hundred rollouts a step most gain lands in the first 100–200 steps. 200 (≈ 32 passes over the 200 training tasks; 51,200 training rollouts ≈ 180–250M generated tokens thinking-on under the 4096 cap, ~45M thinking-off; see stage 6 for time and cost. An earlier ~50M figure here was wrong by 4×, corrected 1 Sep). Fixed because a "stop when eval plateaus" rule is a post-hoc decision dressed as a schedule. Stage 6's cost ceiling would set the final N; stage 5's stop rules the only early exit. | Dom (open) |
 
 ## 5. Evidence: how you know it worked, or cheated
 
@@ -83,12 +83,19 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 
 ## 6. Compute
 
-| Decision | Options | Recommendation | Owner | Status |
-|---|---|---|---|---|
-| Provider | Prime Intellect pods · other | Prime (account, CLI, credits in place) | operator | default |
-| GPUs | 1×H100 · 2×H100 · 1×H200 | 2×H100: trainer on one, vLLM inference on the other | Dom | open |
-| Weight sync | prime-rl default | default | operator | default |
-| Cost ceiling / time ceiling | | open; first run ~6 h ≈ $30–40 | Dom | open |
+**Closed 1 Sep 2026 (Dom): "2xH100 as proposed, $150 ceiling, 24 hour wall".**
+
+Arithmetic the decisions rest on: 200 steps × 256 = 51,200 training rollouts + 10 evals × 360 = 3,600. Thinking-on under the 4096 cap ≈ 3.5k tokens/rollout → 180–250M generated tokens; thinking-off ≈ 900 → ~45M. A 4B in bf16 on one H100 under vLLM at 256 concurrent sequences decodes ~4–8k tokens/s aggregate → 6–17 h of generation thinking-on, 1.5–3 h thinking-off; gradient steps are minutes in total. Scoring runs in Prime sandboxes off the GPU clock; ~64 sandboxes in flight keeps a 256-rollout step's scoring under two minutes.
+
+| Decision | Decided | Owner |
+|---|---|---|
+| Provider | Prime Intellect pods (account, CLI, inference and sandbox access all in place). | operator |
+| GPUs | **2×H100**: trainer on one (full FT of a 4B ≈ 64 GB before activations, gradient checkpointing on), vLLM inference on the other. If measured throughput < 4k tokens/s, add a third card for inference; do not share a card between the two processes. | Dom |
+| Weight sync | prime-rl default trainer → inference path. | operator |
+| Cost ceiling, run 1 | **$150**, all-in: GPU hours (2×H100 ≈ $5/h → $30–100 thinking-on, $10–20 off), evals, the owed sandbox re-baselines (~$5), sandbox CPU time (rate to check before the config is written). | Dom |
+| Wall-time ceiling, run 1 | **24 h**, evals inside it. Covers the slow end of thinking-on. | Dom |
+
+Consequence for stage 1's open thinking row: both ceilings cover thinking-on, so cost does not force the decision; the thinking-off baseline decides it on merit. The cost gap (roughly 5×) is recorded here so the decision is made knowing it.
 
 ## 7. Record
 
@@ -101,6 +108,8 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 | Decision records | | one per deviation from SPEC; the checkpoint change owes one (Dom writes) | Dom | open |
 
 ## Open decisions, in the order they get walked
+
+6. ~~Stage 6 closed 1 Sep~~
 
 5. ~~Stage 5 closed 1 Sep~~ (Dom to confirm the test that operationalises his criterion)
 
