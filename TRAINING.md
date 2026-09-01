@@ -55,14 +55,16 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 
 ## 4. Update: how numbers become a gradient
 
-| Decision | Options | Recommendation | Owner | Status |
-|---|---|---|---|---|
-| Tasks per step | 16 · 32 · 64 | 32 (256 rollouts/step) | operator | default |
-| Advantage normalisation | group mean only · group mean and std | prime-rl default | operator | default |
-| Clipping | PPO-style ratio clip | prime-rl default | operator | default |
-| Learning rate / schedule | | prime-rl default for a 4B; no warm-up games in run 1 | operator | default |
-| Group filtering | none · drop all-zero and all-one groups | drop both | operator | default |
-| Steps / stop condition | fixed N · eval plateau · budget | fixed N for run 1, sized by the cost ceiling | operator | default |
+**Closed 1 Sep 2026 (Dom), step count provisional on stage 6.** The gradient uses each rollout's advantage, its reward relative to its own group: `A = (r − mean(group)) / std(group)`. No value model; the group is the baseline.
+
+| Decision | Options | Decided | Owner |
+|---|---|---|---|
+| Advantage normalisation | group mean only (Dr. GRPO) · mean and std | **Mean and std** (default). Dom's call with the trade stated: in a group of seven 0.2s and one 0.4, the 0.4 gets A ≈ +2.6 and each 0.2 gets −0.4; one extra mutant killed is the strongest signal in the batch. Wanted on hard tasks, where the first success must be amplified; the cost is that a lucky kill is amplified the same way. | Dom |
+| Clipping | PPO ratio clip | ε = 0.2 (default). Bounds how far any token's probability moves in one step, needed because async-level-1 rollouts are one step off-policy. Stability, not a result knob. | operator |
+| Learning rate / schedule | | 1e-6, constant, no warm-up in run 1. RL full fine-tune of a 4B lives in 1e-6 to 5e-6; too high shows as an entropy crash in stage 5's telemetry. | operator |
+| Tasks per step | 16 · 32 · 64 | 32 (× G = 8 → 256 rollouts per step). | operator |
+| Group filtering | none · drop zero-spread groups | Drop all-zero and all-one groups before the update; they carry no gradient and would otherwise fill the batch. Pairs with stage 2's G→16 rule. | operator |
+| Steps / stop condition | fixed N · rule | **Fixed N, provisionally 200** (≈ 32 passes over the 200 training tasks, ~50M generated tokens at thinking-on lengths, roughly 6–10 h on 2×H100). Fixed because a "stop when eval plateaus" rule is a post-hoc decision dressed as a schedule. Stage 6's cost ceiling sets the final N; stage 5's stop rules are the only early exit. | Dom |
 
 ## 5. Evidence: how you know it worked, or cheated
 
@@ -95,6 +97,8 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 | Decision records | | one per deviation from SPEC; the checkpoint change owes one (Dom writes) | Dom | open |
 
 ## Open decisions, in the order they get walked
+
+4. ~~Stage 4 closed 1 Sep~~ (N = 200 provisional until stage 6)
 
 1. Thinking on/off, decided when the thinking-off baseline lands (stage 1; everything else in stage 1 closed 1 Sep)
 2. ~~Stage 2 closed 1 Sep~~ (pre-run floor re-measure at T=1.0, cap 4096 owed)
