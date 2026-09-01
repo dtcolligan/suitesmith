@@ -15,10 +15,10 @@ Walked one stage at a time; each stage closes with Dom's call.
 | Decision | Options | Recommendation | Owner | Status |
 |---|---|---|---|---|
 | Checkpoint | Qwen2.5-Coder-1.5B (SPEC) · Qwen3.5-0.8B/2B/4B · qwen3-8b | **Qwen3.5-4B**: strict floor 0.614, 48/50 groups with gradient; 2B/0.8B starved; 8B ~0.9 | Dom | decided 1 Sep |
-| Update method | full fine-tune · LoRA | full fine-tune (what "trained" means in the report; fits on 2×H100) | Dom | open |
+| Update method | full fine-tune · LoRA | full fine-tune (what "trained" means in the report; fits on 2×H100) | Dom | **decided 1 Sep: full fine-tune** |
 | Precision | bf16 · fp32 master weights | bf16 with fp32 optimiser state (prime-rl default) | operator | default |
-| Reference model / KL | KL penalty to the start checkpoint · none | open: KL is the leash on how far the policy can drift, which is also how much hacking pressure the grader faces | Dom | open |
-| Chat template / thinking | thinking on · thinking off | open: a template switch for Qwen3.5, separate from any token cap; changes what a rollout is | Dom | open |
+| Reference model / KL | KL penalty to the start checkpoint · none | Dom uncertain (1 Sep). Proposed plan: run 1 with β = 0 so the grader faces the full optimisation pressure the project exists to measure, stop rules (stage 5) as the guard; if hacking appears, run 2 with a small β (0.001–0.01) as the contrast. Either way the choice is pre-registered before the run | Dom | open |
+| Chat template / thinking | thinking on · thinking off | **on, provisional** (every baseline so far is thinking-on; ~5k output tokens/rollout, the cost driver). Thinking-off floor queued 1 Sep on both splits (`--sampling.reasoning-effort none`, verified: 867 vs 2.4K tokens on one rollout, no `reasoning_content`). Revisit with the number | Dom | provisional |
 
 ## 2. Rollouts: how samples are produced
 
@@ -82,7 +82,7 @@ Walked one stage at a time; each stage closes with Dom's call.
 
 ## Open decisions, in the order they get walked
 
-1. Update method, KL, thinking (stage 1)
+1. ~~Update method~~ (decided) · KL (Dom uncertain; plan proposed) · thinking (provisional on; off-floor queued) (stage 1)
 2. Batch composition, isolation (stage 3)
 3. Which checkpoint is the result; success criterion (stage 5)
 4. GPUs; cost and time ceilings (stage 6)
