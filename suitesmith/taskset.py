@@ -209,6 +209,11 @@ class TopK(Family):
         pf, tf, fn = params["pf"], params["tf"], params["fn"]
         pdir = "highest first" if params["p_desc"] else "lowest first"
         tdir = "lower" if params["t_asc"] else "higher"
+        # Wording fixed 1 Sep 2026 after Q8 calibration: "ordered by the
+        # higher <field>" was misread as ascending by gpt-4o-mini 15/16
+        # times, even white-box; "k is a positive integer" closes the
+        # k <= 0 hole the same run exposed (suites asserting invented
+        # ValueError / negative-k behaviour the spec never gave).
         # Example computed by running the reference: the spec can never
         # contradict the behaviour it documents. It contains a tie, so
         # black-box instances still expose the tie-break rule.
@@ -221,9 +226,9 @@ class TopK(Family):
         return (
             f"def {fn}(records, k):\n"
             f'    """Return the k records ranked by {pf!r} ({pdir}).\n'
-            f"    Records tied on {pf!r} are ordered by the {tdir} {tf!r}.\n"
-            f"    Records keep all their keys. If k exceeds the number of\n"
-            f"    records, return them all (ranked).\n\n"
+            f"    Ties on {pf!r} are broken by {tf!r}, {tdir} first.\n"
+            f"    Records keep all their keys. k is a positive integer; if k\n"
+            f"    exceeds the number of records, return them all (ranked).\n\n"
             f"    >>> {fn}({ex_in!r}, 2)\n"
             f"    {ex_out!r}\n"
             f'    """\n'

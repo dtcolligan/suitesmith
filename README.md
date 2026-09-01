@@ -30,6 +30,10 @@ Matches `prime-envs/environments/*/*` file-for-file
   interpretability
 - `suitesmith/__init__.py` — verifiers wiring: `load_environment()` →
   `vf.SingleTurnEnv`; zero-weight rubric funcs carry the §7 instrumentation
+- `scripts/calib_report.py` — calibration report for a finished run:
+  re-grades every rollout with per-test detail, splits the shortfall into
+  gate losses vs surviving mutants (by mutation name), and ranks tasks by
+  ref_failed concentration with spec + failing test side by side
 - Acceptance battery: held out privately (kept outside this repo; not part
   of the published environment). The rebuild bar — "done when the battery
   passes" — is graded against that private suite.
@@ -42,6 +46,7 @@ SUITESMITH_LOG=outputs/calib.jsonl .venv/bin/eval suitesmith -m openai/gpt-4o-mi
   -n 50 -r 8 -c 8 --env.agent.harness.id null --env.agent.runtime.type subprocess --no-push
                                               # Q8 calibration; -c caps episodes in flight
                                               # (default 128 swamps an 8 GB laptop)
+.venv/bin/python scripts/calib_report.py outputs/<run-dir>   # why is it not saturating
 ```
 
 Set `SUITESMITH_LOG=/path/to/log.jsonl` to append one JSON line per scored
