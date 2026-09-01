@@ -192,7 +192,9 @@ class TopK(Family):
         pf = params["tf"] if mutate == "wrong_field" else params["pf"]
         psign = "-" if p_desc else ""
         tsign = "" if t_asc else "-"
-        end = "k - 1" if mutate == "off_by_one" else "k"
+        # k <= 0 returns [] (defined behaviour, 1 Sep 2026): the slice is
+        # clamped so the spec, the reference and every mutant agree on it.
+        end = "max(k, 0) - 1" if mutate == "off_by_one" else "max(k, 0)"
         var, arg = ("ordered", "item") if twin else ("ranked", "r")
         key = f"lambda {arg}: ({psign}{arg}[{pf!r}], {tsign}{arg}[{params['tf']!r}])"
         if mutate == "drop_tie":
@@ -211,9 +213,11 @@ class TopK(Family):
         tdir = "lower" if params["t_asc"] else "higher"
         # Wording fixed 1 Sep 2026 after Q8 calibration: "ordered by the
         # higher <field>" was misread as ascending by gpt-4o-mini 15/16
-        # times, even white-box; "k is a positive integer" closes the
-        # k <= 0 hole the same run exposed (suites asserting invented
-        # ValueError / negative-k behaviour the spec never gave).
+        # times, even white-box. The k <= 0 case is DEFINED, not guarded:
+        # "k is a positive integer" (tried the same day) read as an
+        # invitation to test the boundary and assume ValueError (35 of
+        # 58 top_k failing tests on baseline-v1). Behaviour stated in the
+        # spec and honoured by the reference leaves nothing to guess.
         # Example computed by running the reference: the spec can never
         # contradict the behaviour it documents. It contains a tie, so
         # black-box instances still expose the tie-break rule.
@@ -227,8 +231,8 @@ class TopK(Family):
             f"def {fn}(records, k):\n"
             f'    """Return the k records ranked by {pf!r} ({pdir}).\n'
             f"    Ties on {pf!r} are broken by {tf!r}, {tdir} first.\n"
-            f"    Records keep all their keys. k is a positive integer; if k\n"
-            f"    exceeds the number of records, return them all (ranked).\n\n"
+            f"    Records keep all their keys. If k exceeds the number of\n"
+            f"    records, return them all (ranked). If k <= 0, return [].\n\n"
             f"    >>> {fn}({ex_in!r}, 2)\n"
             f"    {ex_out!r}\n"
             f'    """\n'
