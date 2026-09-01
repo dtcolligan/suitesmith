@@ -746,6 +746,12 @@ def build_dataset(num_train=0, num_eval_seen=0, num_eval_vocab=0,
 # Default taskset size (training side); calibration (Q8) may revise.
 NUM_TRAIN = 200
 WHITE_FRAC = 0.7
+# Eval split (Q5-ext tiers): seen = trained families, unseen seeds;
+# vocab = trained families, eval side of every pool; template = the
+# eval-only window family. Selected with SUITESMITH_SPLIT=eval.
+NUM_EVAL_SEEN = 30
+NUM_EVAL_VOCAB = 30
+NUM_EVAL_WINDOW = 30
 
 
 class SuitesmithData(vf.TaskData):
@@ -823,10 +829,15 @@ class SuitesmithTask(vf.Task[SuitesmithData]):
 
 class SuitesmithTaskset(vf.Taskset[SuitesmithTask, vf.TasksetConfig]):
     def load(self) -> list["SuitesmithTask"]:
-        train_rows, _ = build_dataset(num_train=NUM_TRAIN,
-                                      white_frac=WHITE_FRAC)
+        # SUITESMITH_SPLIT=eval loads the held-out tiers instead of the
+        # training rows (same switch style as SUITESMITH_LOG).
+        train_rows, eval_rows = build_dataset(
+            num_train=NUM_TRAIN, num_eval_seen=NUM_EVAL_SEEN,
+            num_eval_vocab=NUM_EVAL_VOCAB, num_eval_window=NUM_EVAL_WINDOW,
+            white_frac=WHITE_FRAC)
+        rows = eval_rows if os.environ.get("SUITESMITH_SPLIT") == "eval" else train_rows
         tasks = []
-        for i, r in enumerate(train_rows):
+        for i, r in enumerate(rows):
             info = r["info"]
             data = build_instance(info["family"], info["seed"],
                                   info["visibility"], info["mix"],
