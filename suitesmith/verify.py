@@ -69,8 +69,11 @@ def extract_suite(text) -> str:
 # in-process pytest session and tallies outcomes through a tiny plugin,
 # so parametrize / fixtures / pytest.raises are all honoured (SPEC Q2:
 # the model writes PYTEST functions, the grader must speak pytest). It
-# never raises: every outcome is data on stdout, so the runner can tell
-# "suite failed" from "runner broke". A test that raises KeyboardInterrupt
+# never raises on the SUITE's behalf: every suite outcome is data on
+# stdout, so the runner can tell "suite failed" from "runner broke".
+# Our own failures (pytest missing from the cargo env) are allowed to
+# crash: no JSON line, the runner reports "crash", the grader reports
+# the error gate, the taskset raises. A test that raises KeyboardInterrupt
 # or SystemExit is still a failing test, not a crash: pytest reports
 # SystemExit as a failure and turns KeyboardInterrupt into exit code 2,
 # which the driver counts as one failed test.
@@ -82,11 +85,7 @@ _DRIVER = """\
 import json, os, sys
 
 os.environ.setdefault("PYTEST_DISABLE_PLUGIN_AUTOLOAD", "1")
-try:
-    import pytest
-except BaseException:
-    print(json.dumps({"error": "import", "n_tests": 0, "failed": 0}))
-    sys.exit(0)
+import pytest  # missing pytest is OUR failure: crash loudly, never blame the suite
 
 
 class Count:

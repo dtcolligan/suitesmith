@@ -811,6 +811,10 @@ class SuitesmithTask(vf.Task[SuitesmithData]):
             raise RuntimeError(f"verify.py failed: {result.stderr.strip()[-1000:]}")
         verdict = json.loads(result.stdout.strip().splitlines()[-1])
         self._log(verdict)
+        if verdict["gate"] == "error":
+            # The runner broke (driver crashed), not the suite. Same rule
+            # as above: our failures raise, they never score 0.0.
+            raise RuntimeError(f"verify.py error gate: {verdict}")
         return float(verdict["reward"])
 
     def _log(self, verdict: dict) -> None:
