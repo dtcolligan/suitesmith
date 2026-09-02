@@ -107,7 +107,7 @@ Consequence for stage 1's open thinking row: both ceilings cover thinking-on, so
 | Config committed | `configs/run1.toml` (or prime-rl's expected form), committed before launch, never edited after. | operator |
 | Seeds | Fixed and in the config: dataset shuffle, sampling where the server honours it, trainer init. | operator |
 | Run naming and logs | `run1-4b-<hash>`; trainer logs + the S3 verdict log kept in the run directory and committed at the end (the S3 log is the audit trail for every stop rule). W&B optional; local is the record. | operator |
-| Decision records | One per deviation from SPEC, Dom's voice, `~/career/record/decisions/`. **Owed 2 Sep: the checkpoint change (Qwen2.5-Coder-1.5B → Qwen3.5-4B).** KL plan, thinking, runtime rule are recorded in this file in Dom's words. | Dom |
+| Decision records | One per deviation from SPEC, Dom's voice, `~/career/record/decisions/`. **Filed 2 Sep:** ~/career/record/decisions/2026-09-02-training-checkpoint-qwen3.5-4b.md. KL plan, thinking, runtime rule are recorded in this file in Dom's words. | Dom |
 
 ## Where it stands (1 Sep 2026, end of day)
 
@@ -116,7 +116,7 @@ Stages 2–7 closed; stage 1 closed except **thinking on/off**, decided by the t
 Owed before run 1, in order:
 1. Thinking decision (Dom), on tonight's numbers with the ~5× cost gap beside them.
 2. Dom confirms the test under the stage-5 criterion.
-3. Checkpoint decision record (Dom, 2 Sep).
+3. ~~Checkpoint decision record~~ (filed 2 Sep).
 4. Sandbox CPU pricing checked (operator).
 5. Re-baselines on the sandbox runtime at T = 1.0, cap 4096, thinking per (1): 4B both splits, 8B eval split (operator).
 6. prime-rl config written from this file, committed (operator), then launch (Dom's go).
