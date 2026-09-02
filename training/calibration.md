@@ -1,6 +1,6 @@
 # Calibration
 
-Purpose: choose the checkpoint and the thinking mode. Subprocess runtime on a laptop, provider-default temperature, no token cap, 1–2 September 2026. Train split 50 tasks × 8 rollouts, eval split 90 × 8.
+Purpose: choose the model and the thinking mode.
 
 | Model | Train mean | Train groups dead / all-nonzero | Eval mean | seen / vocab / window | Eval groups dead |
 |---|---|---|---|---|---|
@@ -12,8 +12,7 @@ Purpose: choose the checkpoint and the thinking mode. Subprocess runtime on a la
 | Qwen3.5-35B-A3B | 0.904 | 0 / 34 | 0.878 | 0.928 / 0.896 / 0.809 | 0 |
 | gpt-4o-mini | | | 0.693 | 0.82 / 0.90 / 0.35 | |
 
-- Among suites that pass the reference gate, kill rate is 0.97 to 1.00 for every model. The reward is the reference gate.
-- Checkpoint: Qwen3.5-4B. 0.8B and 2B starve. 8B and 35B have nothing left to learn.
-- Thinking: on. Off is trainable on the train split but scores 0.04 on the window tier. On costs about 5k output tokens per rollout, off about 940.
-
-Rule for thinking, fixed before the off numbers were in: off if its train floor is in 0.2–0.7 with at least 40 of 50 groups mixed, its window tier is above 0.10, and its seen and vocab tiers are within 0.15 of on. Otherwise on.
+- Subprocess runtime on a laptop
+- Provider-default temperature, no token cap
+- Train split 50 tasks × 8 rollouts, eval split 90 × 8
+- 1–2 September 2026
