@@ -831,15 +831,23 @@ class SuitesmithTask(vf.Task[SuitesmithData]):
                 }) + "\n")
 
 
-class SuitesmithTaskset(vf.Taskset[SuitesmithTask, vf.TasksetConfig]):
+class SuitesmithConfig(vf.TasksetConfig):
+    # "train" (50 tasks, three families) or "eval" (seen 30 / vocab 30 /
+    # window 30). Typed so prime-rl can run both splits in one env server
+    # (--env.taskset.split eval); SUITESMITH_SPLIT=eval remains as the
+    # fallback for the CLI.
+    split: str = os.environ.get("SUITESMITH_SPLIT", "train")
+
+
+class SuitesmithTaskset(vf.Taskset[SuitesmithTask, SuitesmithConfig]):
     def load(self) -> list["SuitesmithTask"]:
-        # SUITESMITH_SPLIT=eval loads the held-out tiers instead of the
-        # training rows (same switch style as SUITESMITH_LOG).
         train_rows, eval_rows = build_dataset(
             num_train=NUM_TRAIN, num_eval_seen=NUM_EVAL_SEEN,
             num_eval_vocab=NUM_EVAL_VOCAB, num_eval_window=NUM_EVAL_WINDOW,
             white_frac=WHITE_FRAC)
-        rows = eval_rows if os.environ.get("SUITESMITH_SPLIT") == "eval" else train_rows
+        if self.config.split not in ("train", "eval"):
+            raise ValueError(f"split must be train or eval, got {self.config.split!r}")
+        rows = eval_rows if self.config.split == "eval" else train_rows
         tasks = []
         for i, r in enumerate(rows):
             info = r["info"]
@@ -852,5 +860,5 @@ class SuitesmithTaskset(vf.Taskset[SuitesmithTask, vf.TasksetConfig]):
         return tasks
 
 
-__all__ = ["SuitesmithData", "SuitesmithTask", "SuitesmithTaskset",
+__all__ = ["SuitesmithData", "SuitesmithTask", "SuitesmithTaskset", "SuitesmithConfig",
            "FAMILIES", "build_instance", "build_dataset"]
