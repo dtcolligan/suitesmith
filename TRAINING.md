@@ -51,7 +51,7 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 **Baselines owed on the training runtime before run 1** (the calibration numbers of 1 Sep are history, labelled "subprocess, MacBook Air"):
 - Qwen3.5-4B, train and eval splits, temperature 1.0, max_tokens 4096, thinking per stage 1's pending decision. This is the pre-training row of the results table.
 - qwen3-8b eval split (scale reference row). Calibration value, subprocess/Air, 2 Sep: 0.856 (seen 0.886 / vocab 0.955 / window 0.727), 0 dead groups. Dom's rule: all Qwen models that appear in the table are re-measured on the final runtime.
-- gpt-4o-mini, 0.8B, 2B, 35B-A3B stay calibration-only unless promoted to the table.
+- gpt-4o-mini, 0.8B, 2B, 35B-A3B stay calibration-only unless promoted to the table. 35B-A3B calibration (subprocess/Air, 2 Sep): train floor 0.904 (34/50 all-nonzero, 0 dead); eval split 0.878 (seen 0.928 / vocab 0.896 / window 0.809; 0 dead, 48/90 all-nonzero). Same-generation MoE lands where the previous-generation dense 8B does (0.856), with a stronger window tier.
 
 ## 4. Update: how numbers become a gradient
 
