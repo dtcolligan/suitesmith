@@ -1,0 +1,93 @@
+# suitesmith run 1. Values from training/training.md and training/baselines.md.
+# Launch on the pod from a prime-rl checkout: uv run rl @ configs/run1.toml --dry-run, then without --dry-run.
+
+max_steps = 200
+seq_len = 10240
+
+[model]
+name = "Qwen/Qwen3.5-4B"
+
+[deployment]
+num_train_gpus = 1
+num_infer_gpus = 1
+
+[run]
+name = "run1-4b"
+
+[ckpt]
+interval = 20
+keep_last = 10
+
+[monitors.wandb]
+project = "suitesmith"
+name = "run1-4b"
+
+[trainer.optim]
+type = "adamw"
+lr = 1e-6
+weight_decay = 0.01
+max_norm = 1.0
+
+[trainer.scheduler]
+type = "constant"
+
+[trainer.loss]
+type = "ipo"
+eps = 0.1
+adv_tau = 1.0
+kl_tau = 0.0
+
+[trainer.model]
+optimization_dtype = "float32"
+
+[orchestrator]
+batch_size = 256
+group_size = 8
+max_off_policy_steps = 1
+tasks_per_minute = 60
+
+[orchestrator.algo]
+type = "grpo"
+
+[orchestrator.renderer]
+name = "auto"
+
+[orchestrator.train.sampling]
+temperature = 1.0
+max_completion_tokens = 8192
+
+[[orchestrator.train.source]]
+name = "suitesmith-train"
+env.taskset.id = "suitesmith"
+env.taskset.split = "train"
+env.agent.harness.id = "null"
+env.agent.runtime.type = "prime"
+env.agent.runtime.image = "python:3.12-slim"
+env.agent.runtime.idle_timeout = 600
+env.agent.max_turns = 1
+env.agent.timeout = { setup = 300, rollout = 900, scoring = 300 }
+env.agent.retries = { max_retries = 2, include = ["ProviderError", "SandboxError"] }
+curriculum = { gates = { zero_advantage = { type = "advantage_range" } } }
+
+[orchestrator.eval]
+interval = 20
+num_examples = 90
+group_size = 4
+
+[orchestrator.eval.sampling]
+temperature = 1.0
+max_completion_tokens = 8192
+
+[[orchestrator.eval.source]]
+name = "suitesmith-eval"
+env.taskset.id = "suitesmith"
+env.taskset.split = "eval"
+env.agent.harness.id = "null"
+env.agent.runtime.type = "prime"
+env.agent.runtime.image = "python:3.12-slim"
+env.agent.runtime.idle_timeout = 600
+env.agent.max_turns = 1
+env.agent.timeout = { setup = 300, rollout = 900, scoring = 300 }
+env.agent.retries = { max_retries = 2, include = ["ProviderError", "SandboxError"] }
+
+[inference]
