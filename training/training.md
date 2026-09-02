@@ -4,7 +4,7 @@
 |---|---|
 | Policy | Qwen3.5-4B, full fine-tune, bf16 weights, fp32 optimiser state, thinking on |
 | Algorithm | GRPO. Group size 8, learning rate 1e-6 constant, KL off. Advantage = reward minus the group mean, no division by the group std (Dom, 2 Sep: "mean-only"; prime-rl's GRPO offers nothing else). Trust region: a token whose probability moved more than eps = 0.1 is masked, prime-rl's default (Dom: "eps default"). Weight decay 0.01, gradient norm clipped at 1.0, both defaults |
-| Batch | 32 tasks × 8 rollouts per step. Zero-spread groups dropped. Group size 16 if under 60% of groups are alive |
+| Batch | 32 tasks × 8 rollouts per step. Zero-spread groups dropped. Group size 16 if under 60% of groups are alive. Rollouts may be one weight update stale (max_off_policy_steps 2, Dom, 2 Sep; at 1 the smoke idled generation for every trainer step) |
 | Steps | 200 |
 | Sampling | Temperature 1.0, token cap 8192, one turn. Sequence length 10240 |
 | Reward | Strict, as in the README. Scored in Prime sandboxes, python:3.12-slim, one sandbox per rollout |

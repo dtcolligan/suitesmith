@@ -46,7 +46,7 @@ optimization_dtype = "float32"
 [orchestrator]
 batch_size = 256
 group_size = 8
-max_off_policy_steps = 1
+max_off_policy_steps = 2
 tasks_per_minute = 60
 
 [orchestrator.algo]
