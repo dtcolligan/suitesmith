@@ -4,6 +4,9 @@
 max_steps = 200
 seq_len = 10240
 
+[env_vars]
+SUITESMITH_LOG = "/root/prime-rl/outputs/run1-4b/verdicts.jsonl"
+
 [model]
 name = "Qwen/Qwen3.5-4B"
 
