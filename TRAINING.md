@@ -93,7 +93,7 @@ Arithmetic the decisions rest on: 200 steps × 256 = 51,200 training rollouts + 
 | Provider | Prime Intellect pods (account, CLI, inference and sandbox access all in place). | operator |
 | GPUs | **2×H100**: trainer on one (full FT of a 4B ≈ 64 GB before activations, gradient checkpointing on), vLLM inference on the other. If measured throughput < 4k tokens/s, add a third card for inference; do not share a card between the two processes. | Dom |
 | Weight sync | prime-rl default trainer → inference path. | operator |
-| Cost ceiling, run 1 | **$150**, all-in: GPU hours (2×H100 ≈ $5/h → $30–100 thinking-on, $10–20 off), evals, the owed sandbox re-baselines (~$5), sandbox CPU time (rate to check before the config is written). | Dom |
+| Cost ceiling, run 1 | **$150**, all-in: GPU hours (2×H100 ≈ $5/h → $30–100 thinking-on, $10–20 off), evals, the owed sandbox re-baselines (~$5), sandbox CPU time **checked 2 Sep: ~$25–35 for run 1** (Prime rates: $0.05/core-h + $0.01/GB-h + $0.001/GB-disk-h → $0.075/h for our 1 core / 2 GB / 5 GB VM sandbox; one sandbox per rollout, deleted at teardown, idle fallback 60 min; billed by the second — yesterday's five smoke sandboxes cost $0.0003–0.0005 each, i.e. 14–24 s billed; 54,800 rollouts × ~$0.0005–0.0006 ≈ $25–35, re-baselines ≈ $1). Concurrency cap 512, ours 64. Thinking-on worst case ($100 GPU + $35 sandbox) sits inside $150 with ~$15 margin; thinking-off has ~$100 spare. | Dom |
 | Wall-time ceiling, run 1 | **24 h**, evals inside it. Covers the slow end of thinking-on. | Dom |
 
 Consequence for stage 1's open thinking row: both ceilings cover thinking-on, so cost does not force the decision; the thinking-off baseline decides it on merit. The cost gap (roughly 5×) is recorded here so the decision is made knowing it.
@@ -118,6 +118,6 @@ Owed before run 1, in order:
 1. Thinking decision (Dom), on tonight's numbers with the ~5× cost gap beside them.
 2. Dom confirms the test under the stage-5 criterion.
 3. ~~Checkpoint decision record~~ (filed 2 Sep).
-4. Sandbox CPU pricing checked (operator).
+4. ~~Sandbox CPU pricing checked (operator).~~ Done 2 Sep, see stage 6.
 5. Re-baselines on the sandbox runtime at T = 1.0, cap 4096, thinking per (1): 4B both splits, 8B eval split (operator).
 6. prime-rl config written from this file, committed (operator), then launch (Dom's go).
