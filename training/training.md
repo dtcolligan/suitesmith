@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Policy | Qwen3.5-4B, full fine-tune, bf16 weights, fp32 optimiser state, thinking on |
-| Algorithm | GRPO. Group size 8, learning rate 1e-6 constant, KL off. Advantage = reward minus the group mean: prime-rl's GRPO has no standardisation by group std, so the stage-4 choice is not available natively. Open, Dom. Trust region: prime-rl's IPO loss masks a token whose probability moved more than eps = 0.1, in place of a PPO clip of 0.2 |
+| Algorithm | GRPO. Group size 8, learning rate 1e-6 constant, KL off. Advantage = reward minus the group mean, no division by the group std (Dom, 2 Sep: "mean-only"; prime-rl's GRPO offers nothing else). Trust region: a token whose probability moved more than eps = 0.1 is masked, prime-rl's default (Dom: "eps default"). Weight decay 0.01, gradient norm clipped at 1.0, both defaults |
 | Batch | 32 tasks × 8 rollouts per step. Zero-spread groups dropped. Group size 16 if under 60% of groups are alive |
 | Steps | 200 |
 | Sampling | Temperature 1.0, token cap 8192, one turn. Sequence length 10240 |
