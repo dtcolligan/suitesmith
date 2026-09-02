@@ -16,7 +16,7 @@ Walked one stage at a time; each stage closes with Dom's call.
 
 | Decision | Options | Decided | Owner |
 |---|---|---|---|
-| Checkpoint | Qwen2.5-Coder-1.5B (SPEC) · Qwen3.5-0.8B/2B/4B · qwen3-8b | **Qwen3.5-4B.** Strict floor 0.614 on the train split, 48/50 groups with gradient, 0 dead; eval split 0.50 (seen 0.63 / vocab 0.59 / window 0.28). 2B and 0.8B starve (15/50, 8/50); 8B ~0.9, nothing left to learn. Deviation from SPEC; decision record owed. | Dom |
+| Checkpoint | Qwen2.5-Coder-1.5B (SPEC) · Qwen3.5-0.8B/2B/4B · qwen3-8b | **Qwen3.5-4B.** Strict floor 0.614 on the train split, 48/50 groups with gradient, 0 dead; eval split 0.50 (seen 0.63 / vocab 0.59 / window 0.28). 2B and 0.8B starve (15/50, 8/50); 8B ~0.9 on the train split, 0.86 on the eval split (seen 0.89 / vocab 0.96 / window 0.73; 0 dead, 55/90 groups all-nonzero), nothing left to learn. Deviation from SPEC; decision record filed 2 Sep. | Dom |
 | Update method | full fine-tune · LoRA | **Full fine-tune.** The report's claim is "RL on a 4B"; adapters cap how far the policy can move, a confound run 1 does not want. Memory: ~64 GB for weights + grads + Adam + fp32 master, so trainer and inference on separate cards. | Dom |
 | Precision | bf16 · fp32 | bf16 weights and grads, fp32 optimiser state and master copy (prime-rl default). | operator |
 | Reference / KL | β = 0 · small β · standard β | **Run 1: β = 0.** The grader must face the full optimisation pressure the project exists to measure; a leash would make "no hacks appeared" a fact about the leash. Stop rules in stage 5 are the guard. **Run 2: β = 0.04**, the standard GRPO value (DeepSeekMath's GRPO setting and TRL's long-standing default), as the leashed contrast, run whether or not run 1 hacks. Both fixed here, before any training. | Dom |
@@ -50,7 +50,7 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 
 **Baselines owed on the training runtime before run 1** (the calibration numbers of 1 Sep are history, labelled "subprocess, MacBook Air"):
 - Qwen3.5-4B, train and eval splits, temperature 1.0, max_tokens 4096, thinking per stage 1's pending decision. This is the pre-training row of the results table.
-- qwen3-8b eval split (scale reference row). Dom's rule: all Qwen models that appear in the table are re-measured on the final runtime.
+- qwen3-8b eval split (scale reference row). Calibration value, subprocess/Air, 2 Sep: 0.856 (seen 0.886 / vocab 0.955 / window 0.727), 0 dead groups. Dom's rule: all Qwen models that appear in the table are re-measured on the final runtime.
 - gpt-4o-mini, 0.8B, 2B, 35B-A3B stay calibration-only unless promoted to the table.
 
 ## 4. Update: how numbers become a gradient
