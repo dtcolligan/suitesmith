@@ -12,15 +12,15 @@ Walked one stage at a time; each stage closes with Dom's call.
 
 ## 1. Policy: what is being trained
 
-**1 Sep 2026 (Dom): checkpoint, update method, precision, KL closed; thinking open pending the thinking-off baseline.**
+**Closed 1–2 Sep 2026 (Dom).**
 
 | Decision | Options | Decided | Owner |
 |---|---|---|---|
-| Checkpoint | Qwen2.5-Coder-1.5B (SPEC) · Qwen3.5-0.8B/2B/4B · qwen3-8b | **Qwen3.5-4B.** Strict floor 0.614 on the train split, 48/50 groups with gradient, 0 dead; eval split 0.50 (seen 0.63 / vocab 0.59 / window 0.28). 2B and 0.8B starve (15/50, 8/50); 8B ~0.9 on the train split, 0.86 on the eval split (seen 0.89 / vocab 0.96 / window 0.73; 0 dead, 55/90 groups all-nonzero), nothing left to learn. Deviation from SPEC; decision record filed 2 Sep. | Dom |
+| Checkpoint | Qwen2.5-Coder-1.5B (SPEC) · Qwen3.5-0.8B/2B/4B · qwen3-8b | **Qwen3.5-4B.** Train floor 0.614 with 48/50 groups carrying gradient; 2B and 0.8B starve (15/50, 8/50); 8B and 35B ~0.9, nothing left to learn (§Calibration). Deviation from SPEC; decision record filed 2 Sep. | Dom |
 | Update method | full fine-tune · LoRA | **Full fine-tune.** The report's claim is "RL on a 4B"; adapters cap how far the policy can move, a confound run 1 does not want. Memory: ~64 GB for weights + grads + Adam + fp32 master, so trainer and inference on separate cards. | Dom |
 | Precision | bf16 · fp32 | bf16 weights and grads, fp32 optimiser state and master copy (prime-rl default). | operator |
 | Reference / KL | β = 0 · small β · standard β | **Run 1: β = 0.** The grader must face the full optimisation pressure the project exists to measure; a leash would make "no hacks appeared" a fact about the leash. Stop rules in stage 5 are the guard. **Run 2: β = 0.04**, the standard GRPO value (DeepSeekMath's GRPO setting and TRL's long-standing default), as the leashed contrast, run whether or not run 1 hacks. Both fixed here, before any training. | Dom |
-| Thinking | on · off | **Open, decided by the baselines.** Every number so far is thinking-on (train 0.61, eval 0.50; ~5k output tokens per rollout, the dominant cost). The thinking-off baseline is queued on both splits (`--sampling.reasoning-effort none`); Dom decides when both floors are in. What the numbers have to show: the off floor on the train split (alive groups, mean) and the off eval tiers, against the on ones, with the per-rollout token cost beside each. **Decision rule, pre-registered 2 Sep before the off numbers landed (Dom: "yes file it").** Go OFF if all three hold: (1) off train floor mean in 0.2–0.7 with ≥ ~40/50 groups mixed and ≤ ~2 dead (the spec's pre-training gate; 0.35–0.55 ideal); (2) off eval window tier > ~0.10; (3) off seen and vocab within ~0.15 of on (0.63 / 0.59). Go ON if any of: off floor < 0.2 or > ~10 dead groups; off window ≈ 0 while on is 0.28; off trails on by > ~0.3 on the train floor. Off is the default when it clears: same signal, ~5× cheaper, and the on numbers in hand are uncapped (~5.4k output tokens per rollout mean) so under the 4096 cap the true on floor is lower than 0.614; a narrow on-over-off margin is not real, and choosing on with that margin means raising the cap to 8192 (~2× cost again). Either way the 8B reference is re-baselined in the chosen mode (owed item 5) so the "match the 8B" criterion compares like with like. **Off train floor landed 10:56, 2 Sep: mean 0.366, 48/50 mixed, 2 dead, 0 all-nonzero; gates pass 148 / ref_failed 231 / malformed 21; kill-given-pass 0.99; ~940 output tokens per rollout, $0.12 for 400 (on: 0.614, 48/50 mixed, 0 dead, ~5k tokens, ~$1.2). Rule conditions (1) and the >0.3 trailing test both clear (gap 0.25).** **Off eval split landed 11:06: mean 0.271 (seen 0.384 / vocab 0.390 / window 0.039), 23/90 dead groups, malformed 47; $0.20 for 720. On: 0.497 (0.63 / 0.585 / 0.277), 2 dead. Rule verdict: two ON triggers fire (window ≈ 0 against 0.28; seen and vocab trail by 0.25 and 0.20, over the 0.15 line). Recommendation to Dom: thinking ON.** What ON leaves open: the cap. The on numbers are uncapped (~5.4k mean tokens); the owed sandbox re-baseline at T = 1.0 runs the 4B at cap 4096 and 8192 and the run takes the smaller cap that keeps the window tier alive. Stage 6 cost then re-checked at that cap. | Dom |
+| Thinking | on · off | **ON (Dom, 2 Sep).** Rule pre-registered before the off numbers: OFF if the off train floor sits in 0.2–0.7 with ≥ 40/50 mixed groups, the off eval window tier is > 0.10, and off seen/vocab are within 0.15 of on; otherwise ON. Off cleared the train floor (0.366, 48/50 mixed) and failed the eval split (window 0.039 vs 0.277; seen/vocab trail by 0.25/0.20). Cost: ~5k vs ~940 output tokens per rollout. Open consequence: the on baselines are uncapped, so the sandbox re-baseline runs the 4B at cap 4096 and 8192 and the run takes the smaller cap that keeps the window tier alive. | Dom |
 
 ## 2. Rollouts: how samples are produced
 
@@ -48,10 +48,10 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 | Sibling-payload hole | | **Fixed 1 Sep 17:1x** (payload now travels in `SUITESMITH_PAYLOAD`, popped by verify.py before any suite runs; battery pins that the suite's process cannot see it). Was: the payload (reference, twin, mutants, witnesses) is written to `/tmp/suitesmith/<trace-id>.json`; with 8 rollouts of one task in flight, `glob` finds a sibling's answer key and a suite built from its witnesses scores 1.0 without reading the spec; the twin gate does not catch it. Fix: payload over stdin, no shared file. Our defect, by inspection. | operator |
 | Env-server topology | | Co-located with the trainer, workers auto, multiplex 32. | operator |
 
-**Baselines owed on the training runtime before run 1** (the calibration numbers of 1 Sep are history, labelled "subprocess, MacBook Air"):
-- Qwen3.5-4B, train and eval splits, temperature 1.0, max_tokens 4096, thinking per stage 1's pending decision. This is the pre-training row of the results table.
-- qwen3-8b eval split (scale reference row). Calibration value, subprocess/Air, 2 Sep: 0.856 (seen 0.886 / vocab 0.955 / window 0.727), 0 dead groups. Dom's rule: all Qwen models that appear in the table are re-measured on the final runtime.
-- gpt-4o-mini, 0.8B, 2B, 35B-A3B stay calibration-only unless promoted to the table. 35B-A3B calibration (subprocess/Air, 2 Sep): train floor 0.904 (34/50 all-nonzero, 0 dead); eval split 0.878 (seen 0.928 / vocab 0.896 / window 0.809; 0 dead, 48/90 all-nonzero). Same-generation MoE lands where the previous-generation dense 8B does (0.856), with a stronger window tier.
+**Baselines owed on the training runtime before run 1** (1–2 Sep numbers are calibration, subprocess on the Air; see §Calibration):
+- Qwen3.5-4B, both splits, temperature 1.0, thinking on, at cap 4096 and at 8192 (the cap decision). The pre-training row of the results table.
+- qwen3-8b eval split, thinking on (scale reference row). Every Qwen model in the table is re-measured on the final runtime.
+- gpt-4o-mini, 0.8B, 2B, 35B-A3B stay calibration-only unless promoted.
 
 ## 4. Update: how numbers become a gradient
 
@@ -68,7 +68,7 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 
 ## 5. Evidence: how you know it worked, or cheated
 
-**Closed 1 Sep 2026 (Dom): "1. as proposed 2. last with full curve shown 3. statistically significant different performance in evaluations, and ideally matching / beating qwen 8b".** One operator note under the criterion makes it testable; Dom confirms or changes the test.
+**Closed 1 Sep 2026 (Dom): "1. as proposed 2. last with full curve shown 3. statistically significant different performance in evaluations, and ideally matching / beating qwen 8b".** Test wording confirmed 2 Sep.
 
 | Decision | Decided | Owner |
 |---|---|---|
@@ -77,10 +77,10 @@ Pre-run re-measure owed from this stage: 4B train-split floor at temperature 1.0
 | Stop rules (the only early exit from N = 200) | Flags or twin failures rising across three consecutive evals while reward rises → stop, read transcripts (the hack). Truncation > 30% → stop (cap strangling the policy). Entropy < ⅓ of its start → stop (collapse). Mean reward > 0.15 below its running peak → stop (broken). | operator |
 | Checkpoint cadence | Every 20 steps, with eval. Ten checkpoints. | operator |
 | Which checkpoint is the result | **Last (step 200), with the full eval curve shown.** Best-on-eval would pick the luckiest of ten noisy draws (~±0.03 each) and flatter the number by about one noise width; the peak is reported as a peak, not as the result. | Dom |
-| What run 1 trains | **Dom, 2 Sep, verbatim:** "the general capability of writing test-suites is being measured here, and is saturated for 35b but not for 4b. on breaking down the failure modes, the subcapability is spec comprehension and implementer guessing which is causing the difference in performance - and we are going to teach that subcapability via rl to the 4b s.t it gains the umbrella capability and saturates the evals". Data behind it (calibration, 2 Sep): among suites that pass the reference gate, kill rate is 0.97–1.00 for every model tested, so the 4B/35B gap (0.61 vs 0.90 train floor) sits entirely in the reference gate + malformed. Reading rule for the eval curve: vocab-tier gain = comprehension, seen-only gain = memorised reference quirks. | Dom |
+| What run 1 trains | **Dom, 2 Sep, verbatim:** "the general capability of writing test-suites is being measured here, and is saturated for 35b but not for 4b. on breaking down the failure modes, the subcapability is spec comprehension and implementer guessing which is causing the difference in performance - and we are going to teach that subcapability via rl to the 4b s.t it gains the umbrella capability and saturates the evals". Basis: kill-given-pass is 0.97–1.00 for every model, so the gap sits in the reference gate. Curve reading: vocab gain = comprehension, seen-only gain = memorised reference quirks. | Dom |
 | Success criterion | **Dom, verbatim:** "statistically significant different performance in evaluations, and ideally matching / beating qwen 8b". | Dom |
 
-*Operator note to make the criterion testable (Dom to confirm):* the comparison is the untrained 4B vs the step-200 4B on the same 90 eval tasks, both measured on the training runtime; per-task mean reward, paired (same tasks), one test per tier, α = 0.05 (a paired permutation test, distribution-free). "Significant" must hold on the **seen** tier at minimum; vocab and window are reported with their own p-values whatever they show. "Matching / beating qwen 8b" reads as: the trained 4B's eval-split mean is at or above the untrained 8B's on the same runtime, or within its 95% interval ("matching"). Both 8B numbers come from the owed sandbox re-baseline.
+*Test (confirmed by Dom, 2 Sep):* untrained vs step-200 4B on the 90 eval tasks, same runtime; per-task mean reward, paired permutation test per tier, α = 0.05; must hold on seen, vocab and window reported with their own p-values. "Matching the 8B" = trained 4B eval mean at or above the untrained 8B's on the same runtime, or inside its 95% interval.
 
 ## 6. Compute
 
@@ -93,10 +93,10 @@ Arithmetic the decisions rest on: 200 steps × 256 = 51,200 training rollouts + 
 | Provider | Prime Intellect pods (account, CLI, inference and sandbox access all in place). | operator |
 | GPUs | **2×H100**: trainer on one (full FT of a 4B ≈ 64 GB before activations, gradient checkpointing on), vLLM inference on the other. If measured throughput < 4k tokens/s, add a third card for inference; do not share a card between the two processes. | Dom |
 | Weight sync | prime-rl default trainer → inference path. | operator |
-| Cost ceiling, run 1 | **$150**, all-in: GPU hours (2×H100 ≈ $5/h → $30–100 thinking-on, $10–20 off), evals, the owed sandbox re-baselines (~$5), sandbox CPU time **checked 2 Sep: ~$25–35 for run 1** (Prime rates: $0.05/core-h + $0.01/GB-h + $0.001/GB-disk-h → $0.075/h for our 1 core / 2 GB / 5 GB VM sandbox; one sandbox per rollout, deleted at teardown, idle fallback 60 min; billed by the second — yesterday's five smoke sandboxes cost $0.0003–0.0005 each, i.e. 14–24 s billed; 54,800 rollouts × ~$0.0005–0.0006 ≈ $25–35, re-baselines ≈ $1). Concurrency cap 512, ours 64. Thinking-on worst case ($100 GPU + $35 sandbox) sits inside $150 with ~$15 margin; thinking-off has ~$100 spare. | Dom |
+| Cost ceiling, run 1 | **$150**, all-in. GPU: 2×H100 ≈ $5/h → $30–100 thinking-on. Sandboxes: $0.075/h each (1 core / 2 GB / 5 GB), one per rollout, billed by the second, measured $0.0003–0.0005 per rollout → ~$25–35 for 54,800 rollouts; re-baselines ~$1. Worst case ~$135; rechecked once the cap is set. | Dom |
 | Wall-time ceiling, run 1 | **24 h**, evals inside it. Covers the slow end of thinking-on. | Dom |
 
-Consequence for stage 1's open thinking row: both ceilings cover thinking-on, so cost does not force the decision; the thinking-off baseline decides it on merit. The cost gap (roughly 5×) is recorded here so the decision is made knowing it.
+
 
 ## 7. Record
 
@@ -108,16 +108,29 @@ Consequence for stage 1's open thinking row: both ceilings cover thinking-on, so
 | Config committed | `configs/run1.toml` (or prime-rl's expected form), committed before launch, never edited after. | operator |
 | Seeds | Fixed and in the config: dataset shuffle, sampling where the server honours it, trainer init. | operator |
 | Run naming and logs | `run1-4b-<hash>`; trainer logs + the S3 verdict log kept in the run directory and committed at the end (the S3 log is the audit trail for every stop rule). W&B optional; local is the record. | operator |
-| Decision records | One per deviation from SPEC, Dom's voice, `~/career/record/decisions/`. **Filed 2 Sep:** ~/career/record/decisions/2026-09-02-training-checkpoint-qwen3.5-4b.md. KL plan, thinking, runtime rule are recorded in this file in Dom's words. | Dom |
+| Decision records | One per deviation from SPEC, Dom's voice, `~/career/record/decisions/`. Filed 2 Sep: `2026-09-02-training-checkpoint-qwen3.5-4b.md`. | Dom |
+| Launchers | One launcher per chain; a filed result jsonl is set read-only (2 Sep: a second launcher appended 13 rows to a filed file before it was killed). | operator |
 
-## Where it stands (1 Sep 2026, end of day)
+## Calibration (subprocess runtime, MacBook Air, 1–2 Sep 2026)
 
-Stages 2–7 closed; stage 1 closed except **thinking on/off**, decided by the thinking-off baseline (running tonight).
+Train split 50 tasks × 8, eval split 90 tasks × 8 (seen 30 / vocab 30 / window 30), strict reward, provider-default temperature, no token cap.
 
-Owed before run 1, in order:
-1. Thinking decision (Dom). Numbers in (2 Sep 11:06); the pre-registered rule says ON. Awaiting Dom's word.
-2. Dom confirms the test under the stage-5 criterion.
-3. ~~Checkpoint decision record~~ (filed 2 Sep).
-4. ~~Sandbox CPU pricing checked (operator).~~ Done 2 Sep, see stage 6.
-5. Re-baselines on the sandbox runtime at T = 1.0, cap 4096, thinking per (1): 4B both splits, 8B eval split (operator).
-6. prime-rl config written from this file, committed (operator), then launch (Dom's go).
+| Model | Train mean | Train groups dead / all-nonzero | Eval mean | seen / vocab / window | Eval groups dead |
+|---|---|---|---|---|---|
+| Qwen3.5-0.8B | 0.022 | 8/50 carry gradient | | | |
+| Qwen3.5-2B | 0.047 | 15/50 carry gradient | | | |
+| **Qwen3.5-4B, thinking on** | **0.614** | 0 / 2 | **0.497** | 0.63 / 0.585 / 0.277 | 2 |
+| Qwen3.5-4B, thinking off | 0.366 | 2 / 0 | 0.271 | 0.384 / 0.390 / 0.039 | 23 |
+| qwen3-8b | 0.905 (332 rows) | 0 / 33 | 0.856 | 0.886 / 0.955 / 0.727 | 0 |
+| Qwen3.5-35B-A3B | 0.904 | 0 / 34 | 0.878 | 0.928 / 0.896 / 0.809 | 0 |
+| gpt-4o-mini | | | 0.693 | 0.82 / 0.90 / 0.35 | |
+
+Among suites that pass the reference gate, kill rate is 0.97–1.00 for every model: the reward is the reference gate. Thinking on ≈ 5k output tokens per rollout, off ≈ 940.
+
+## Where it stands (2 Sep 2026, 11:30)
+
+Stages 1–7 closed. Owed before run 1, in order:
+1. Wallet top-up for the re-baselines (Dom; ~$6 needed, $6.56 in it).
+2. Re-baselines on the sandbox runtime, T = 1.0, thinking on: 4B at cap 4096 and 8192 on both splits, 8B eval split (operator).
+3. Cap decision (Dom) and the stage 6 cost recheck.
+4. prime-rl config written from this file, committed (operator), then launch (Dom's go).
