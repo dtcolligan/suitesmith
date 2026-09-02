@@ -16,10 +16,6 @@ name = "smoke-4b"
 [ckpt]
 interval = 2
 
-[monitors.wandb]
-project = "suitesmith"
-name = "smoke-4b"
-
 [trainer.optim]
 type = "adamw"
 lr = 1e-6
