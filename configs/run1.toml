@@ -49,6 +49,10 @@ group_size = 8
 max_off_policy_steps = 2
 tasks_per_minute = 60
 
+[orchestrator.concurrency]
+initial_inflight = 96
+max_inflight = 112
+
 [orchestrator.algo]
 type = "grpo"
 
@@ -67,6 +71,7 @@ env.agent.harness.id = "null"
 env.agent.runtime.type = "prime"
 env.agent.runtime.image = "python:3.12-slim"
 env.agent.runtime.idle_timeout = 600
+env.agent.runtime.creates_per_min = 240
 env.agent.max_turns = 1
 env.agent.timeout = { setup = 300, rollout = 900, scoring = 300 }
 env.agent.retries = { max_retries = 2, include = ["ProviderError", "SandboxError"] }
@@ -89,6 +94,7 @@ env.agent.harness.id = "null"
 env.agent.runtime.type = "prime"
 env.agent.runtime.image = "python:3.12-slim"
 env.agent.runtime.idle_timeout = 600
+env.agent.runtime.creates_per_min = 240
 env.agent.max_turns = 1
 env.agent.timeout = { setup = 300, rollout = 900, scoring = 300 }
 env.agent.retries = { max_retries = 2, include = ["ProviderError", "SandboxError"] }
