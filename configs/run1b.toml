@@ -55,7 +55,7 @@ max_inflight = 112
 type = "grpo"
 
 [orchestrator.renderer]
-name = "auto"
+name = "qwen3.5"   # run 1 resolved "auto" to this for Qwen/Qwen3.5-4B; the HF repo id is not in the renderer map, and its chat template is byte-identical to the base model's
 
 [orchestrator.train.sampling]
 temperature = 1.0
