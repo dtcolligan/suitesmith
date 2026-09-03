@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pod bootstrap for suitesmith run 1b. Idempotent; run as root on a fresh Prime pod: bash pod_bootstrap.sh
-# No credentials needed: W&B is off and the step-20 weights arrive by scp at /root/weights/step20 (started from the laptop as soon as the pod is ACTIVE).
+# No credentials needed: W&B is off and the step-20 weights are a public Hugging Face repo.
 set -euo pipefail
 export PATH="/root/.local/bin:$PATH"
 PIN=b2c6fe9aecfdcd83655be3564182e41af4fba515   # last prime-rl commit on CUDA 12.8 (28 Aug 2026); the Lambda pods run driver 570 / CUDA 12.8

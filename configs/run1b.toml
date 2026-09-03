@@ -8,7 +8,7 @@ seq_len = 10240
 SUITESMITH_LOG = "/root/prime-rl/outputs/run1b-4b/verdicts.jsonl"
 
 [model]
-name = "/root/weights/step20"   # step-20 export, copied to the pod by scp; mirror at hf.co/dtcolligan/suitesmith-qwen3.5-4b-run1-step20 (private)
+name = "dtcolligan/suitesmith-qwen3.5-4b-run1-step20"   # step-20 export of run 1, public repo
 
 [deployment]
 num_train_gpus = 1
