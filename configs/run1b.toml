@@ -1,7 +1,8 @@
-# suitesmith run 1b: 20 more steps from the step-20 weights of run 1 (fresh optimiser state). Everything else as run1.toml at 8381d2c.
+# suitesmith run 1b: 10 more steps from the step-20 weights of run 1 (fresh optimiser state), sandbox creation paced under Prime's 4096/hour cap.
+# Learning settings identical to run1.toml at 8381d2c; only steps, checkpoint/eval cadence and dispatch pacing differ (Dom, 3 Sep 19:1x: option f).
 # Launch on the pod from a prime-rl checkout: uv run rl @ configs/run1.toml --dry-run, then without --dry-run.
 
-max_steps = 20
+max_steps = 10
 seq_len = 10240
 
 [env_vars]
@@ -18,7 +19,7 @@ num_infer_gpus = 1
 name = "run1b-4b"
 
 [ckpt]
-interval = 20
+interval = 5
 keep_last = 2
 
 # W&B off for run 1b so no credential has to be written on the pod; metrics.jsonl is pulled instead.
@@ -45,7 +46,7 @@ optimization_dtype = "float32"
 batch_size = 256
 group_size = 8
 max_off_policy_steps = 2
-tasks_per_minute = 480
+tasks_per_minute = 7   # 7 tasks x 8 rollouts = 56 sandboxes/min, 3360/h, under the 4096/h account cap; run 1 used 480 and hit the cap at 0.95 reward (2-3x overgeneration from dropped zero-spread groups)
 
 [orchestrator.concurrency]
 initial_inflight = 96
@@ -69,14 +70,14 @@ env.agent.harness.id = "null"
 env.agent.runtime.type = "prime"
 env.agent.runtime.image = "python:3.12-slim"
 env.agent.runtime.idle_timeout = 600
-env.agent.runtime.creates_per_min = 480
+env.agent.runtime.creates_per_min = 56
 env.agent.max_turns = 1
 env.agent.timeout = { setup = 300, rollout = 900, scoring = 300 }
 env.agent.retries = { max_retries = 2, include = ["ProviderError", "SandboxError"] }
 curriculum = { gates = { zero_advantage = { type = "advantage_range" } } }
 
 [orchestrator.eval]
-interval = 20
+interval = 10
 num_examples = 90
 group_size = 4
 
@@ -92,7 +93,7 @@ env.agent.harness.id = "null"
 env.agent.runtime.type = "prime"
 env.agent.runtime.image = "python:3.12-slim"
 env.agent.runtime.idle_timeout = 600
-env.agent.runtime.creates_per_min = 480
+env.agent.runtime.creates_per_min = 56
 env.agent.max_turns = 1
 env.agent.timeout = { setup = 300, rollout = 900, scoring = 300 }
 env.agent.retries = { max_retries = 2, include = ["ProviderError", "SandboxError"] }
