@@ -46,7 +46,7 @@ optimization_dtype = "float32"
 batch_size = 256
 group_size = 8
 max_off_policy_steps = 2
-tasks_per_minute = 7   # 7 tasks x 8 rollouts = 56 sandboxes/min, 3360/h, under the 4096/h account cap; run 1 used 480 and hit the cap at 0.95 reward (2-3x overgeneration from dropped zero-spread groups)
+tasks_per_minute = 64   # rollouts (episodes) per minute, not tasks: 64/min = 3840/h, under the 4096/h account cap; run 1 used 480 and hit the cap at 0.95 reward (2-3x overgeneration from dropped zero-spread groups)
 
 [orchestrator.concurrency]
 initial_inflight = 96
@@ -70,7 +70,7 @@ env.agent.harness.id = "null"
 env.agent.runtime.type = "prime"
 env.agent.runtime.image = "python:3.12-slim"
 env.agent.runtime.idle_timeout = 600
-env.agent.runtime.creates_per_min = 56
+env.agent.runtime.creates_per_min = 64
 env.agent.max_turns = 1
 env.agent.timeout = { setup = 300, rollout = 900, scoring = 300 }
 env.agent.retries = { max_retries = 2, include = ["ProviderError", "SandboxError"] }
@@ -93,7 +93,7 @@ env.agent.harness.id = "null"
 env.agent.runtime.type = "prime"
 env.agent.runtime.image = "python:3.12-slim"
 env.agent.runtime.idle_timeout = 600
-env.agent.runtime.creates_per_min = 56
+env.agent.runtime.creates_per_min = 64
 env.agent.max_turns = 1
 env.agent.timeout = { setup = 300, rollout = 900, scoring = 300 }
 env.agent.retries = { max_retries = 2, include = ["ProviderError", "SandboxError"] }
