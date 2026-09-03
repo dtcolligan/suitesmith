@@ -17,10 +17,8 @@ if [ ! -d /root/suitesmith ]; then git clone -q https://github.com/dtcolligan/su
 echo "== suitesmith at $(cd /root/suitesmith && git log --oneline -1 | cut -c1-70)"
 uv pip install -q -e /root/suitesmith
 uv run python -c "import torch, vllm, verifiers, suitesmith; print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.device_count(), 'gpus; vllm', vllm.__version__, 'verifiers', verifiers.__version__)"
-echo "== step-20 weights (scp from the laptop)"
-W=/root/weights/step20/model.safetensors
-until [ -f "$W" ] && [ "$(stat -c %s "$W")" = "10350019328" ]; do echo "waiting for $W (have $(stat -c %s "$W" 2>/dev/null || echo 0) of 10350019328 bytes)"; sleep 60; done
-ls /root/weights/step20 | tr '\n' ' '; echo
+echo "== step-20 weights (public HF repo)"
+uv run hf download dtcolligan/suitesmith-qwen3.5-4b-run1-step20 >/dev/null && echo "weights cached"
 mkdir -p /root/prime-rl/outputs/run1b-4b
 echo "== dry run"
 uv run rl @ /root/suitesmith/configs/run1b.toml --dry-run 2>&1 | tail -3
