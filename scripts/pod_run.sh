@@ -3,7 +3,7 @@
 #   pod_run.sh start | stop | resume | status
 set -uo pipefail
 export PATH="/root/.local/bin:$PATH"
-CFG=/root/suitesmith/configs/run1b.toml; LOG=/root/prime-rl/outputs/run1b-4b/run.log
+CFG=/root/suitesmith/configs/run1b.toml; LOG=/root/run1b-run.log   # not inside the run dir: prime-rl refuses to start if outputs/<run> holds any file
 cd /root/prime-rl
 case "${1:-status}" in
   start)  nohup uv run rl @ "$CFG" > "$LOG" 2>&1 & echo "started pid $!, log $LOG" ;;
