@@ -28,4 +28,4 @@ The criterion holds on every tier. The trainer's own step-0 eval (90 × 4, pod v
 
 Stretch goal, against the untrained 8B (90 × 8, cap 8192): step 20's mean 0.881 is inside the 8B's 95% task-bootstrap interval [0.873, 0.928], so it matches by the stated definition. Per tier, seen and vocab are not distinguishable (two-sided p 0.14 and 0.72); on window the 8B is ahead, 0.863 against 0.762, 20 tasks down against 7, two-sided p 0.014.
 
-Not yet done: the remaining 177 steps. Weights for step 20 are held locally, not published.
+Not yet done: the remaining 177 steps. Step-20 weights are public at dtcolligan/suitesmith-qwen3.5-4b-run1-step20 (3 September).
