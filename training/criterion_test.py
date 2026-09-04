@@ -1,6 +1,6 @@
 """Success criterion for a training run: paired sign-flip permutation test per tier.
 
-Usage: python scripts/criterion_test.py REFERENCE_TRACES TRAINED_TRACES [--perms 20000]
+Usage: python training/criterion_test.py REFERENCE_TRACES TRAINED_TRACES [--perms 20000]
 
 Both files are eval-split traces.jsonl (the eval CLI's, or a prime-rl eval's all/traces.jsonl).
 Per task: the mean reward over its rollouts. Per tier: the mean of the trained-minus-reference

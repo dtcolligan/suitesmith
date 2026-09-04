@@ -1,6 +1,6 @@
 # suitesmith run 1b: 10 more steps from the step-20 weights of run 1 (fresh optimiser state), sandbox creation paced under Prime's 4096/hour cap.
 # Learning settings identical to run1.toml at 8381d2c; only steps, checkpoint/eval cadence and dispatch pacing differ (Dom, 3 Sep 19:1x: option f).
-# Launch on the pod from a prime-rl checkout: uv run rl @ configs/run1.toml --dry-run, then without --dry-run.
+# Launch on the pod from a prime-rl checkout: uv run rl @ training/configs/run1b.toml --dry-run, then without --dry-run.
 
 max_steps = 10
 seq_len = 10240

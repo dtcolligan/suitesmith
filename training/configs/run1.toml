@@ -1,5 +1,5 @@
 # suitesmith run 1. Values from training/training.md and training/baselines.md.
-# Launch on the pod from a prime-rl checkout: uv run rl @ configs/run1.toml --dry-run, then without --dry-run.
+# Launch on the pod from a prime-rl checkout: uv run rl @ training/configs/run1.toml --dry-run, then without --dry-run.
 
 max_steps = 200
 seq_len = 10240

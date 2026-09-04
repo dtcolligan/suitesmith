@@ -15,7 +15,7 @@ Train reward per batch rose from 0.48 at step 1 to 0.85–0.96 by step 20. In th
 
 ## Criterion
 
-`scripts/criterion_test.py`: per task, mean reward over rollouts; per tier, a sign-flip permutation test on the trained-minus-untrained per-task differences, 20,000 flips. The untrained side is the 4B baseline row in [baselines.md](baselines.md) (90 × 8, cap 8192); the trained side is the step-20 eval (90 × 4). Same 90 tasks.
+`criterion_test.py`: per task, mean reward over rollouts; per tier, a sign-flip permutation test on the trained-minus-untrained per-task differences, 20,000 flips. The untrained side is the 4B baseline row in [baselines.md](baselines.md) (90 × 8, cap 8192); the trained side is the step-20 eval (90 × 4). Same 90 tasks.
 
 | tier | untrained | step 20 | diff | tasks up / same / down | p (one-sided) |
 |---|---|---|---|---|---|

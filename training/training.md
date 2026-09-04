@@ -14,5 +14,5 @@
 | Success | The trained model scores higher than the untrained one on the eval split. Test: for each tier, compare the two models' per-task scores on the same tasks with a paired permutation test at the 5% level. It must hold on the seen tier. Stretch goal: the trained 4B matches or beats the untrained 8B on the eval split, where matching means inside the 8B's 95% confidence interval |
 | Run 2 | Same, KL β = 0.04 |
 | Compute | 2×H100. Ceiling $150 and 24 hours |
-| Record | Environment tag baseline-v2. Config [configs/run1.toml](../configs/run1.toml). Seeds fixed. Verdict log kept |
+| Record | Environment tag baseline-v2. Config [configs/run1.toml](configs/run1.toml). Seeds fixed. Verdict log kept |
 | Resilience | Whole-rollout retry, twice, on provider and sandbox errors. Task dispatch capped at 60 per minute. Sandbox idle fallback 10 minutes |
